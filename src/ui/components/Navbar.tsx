@@ -1,8 +1,10 @@
 import React from 'react';
-import { Gauge, Upload, Zap } from 'lucide-react';
+import { Gauge, Upload, Zap, Sliders, FileText } from 'lucide-react';
 
 interface NavbarProps {
   sessionTitle?: string;
+  activeTab: 'summary' | 'profile';
+  onTabChange: (tab: 'summary' | 'profile') => void;
   onOpenZipClick: () => void;
   onLoadSyntheticClick: () => void;
   isLoading: boolean;
@@ -10,33 +12,64 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   sessionTitle,
+  activeTab,
+  onTabChange,
   onOpenZipClick,
   onLoadSyntheticClick,
   isLoading,
 }) => {
   return (
-    <header className="border-b border-[#2C3947] bg-[#13181E] px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#1A222B] border border-[#2C3947] text-[#00E676] shadow-[0_0_12px_rgba(0,230,118,0.25)]">
-          <Gauge className="w-5 h-5 stroke-[2.2]" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-black tracking-wider text-base text-[#F0F4F8] font-mono">
-              TACHYON<span className="text-[#00E676]">.</span>STUDIO
-            </span>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-[#1A222B] text-[#00E5FF] border border-[#2C3947]">
-              v0.1 PC
-            </span>
+    <header className="border-b border-[#2C3947] bg-[#13181E] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#1A222B] border border-[#2C3947] text-[#00E676] shadow-[0_0_12px_rgba(0,230,118,0.25)]">
+            <Gauge className="w-5 h-5 stroke-[2.2]" />
           </div>
-          <p className="text-xs text-[#8B9CB0] truncate max-w-md">
-            {sessionTitle ? (
-              <span className="text-[#F0F4F8] font-medium">{sessionTitle}</span>
-            ) : (
-              'Herramienta de análisis y renderizado de telemetría'
-            )}
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-black tracking-wider text-base text-[#F0F4F8] font-mono">
+                TACHYON<span className="text-[#00E676]">.</span>STUDIO
+              </span>
+              <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-[#1A222B] text-[#00E5FF] border border-[#2C3947]">
+                v0.1 PC
+              </span>
+            </div>
+            <p className="text-xs text-[#8B9CB0] truncate max-w-xs">
+              {sessionTitle ? (
+                <span className="text-[#F0F4F8] font-medium">{sessionTitle}</span>
+              ) : (
+                'Herramienta de PC para telemetría'
+              )}
+            </p>
+          </div>
         </div>
+
+        {/* Pestañas de Navegación */}
+        <nav className="hidden md:flex items-center gap-1.5 bg-[#090C0E] p-1 rounded-xl border border-[#2C3947]">
+          <button
+            onClick={() => onTabChange('summary')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'summary'
+                ? 'bg-[#1A222B] text-[#00E676] shadow-sm'
+                : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Resumen de Sesión</span>
+          </button>
+
+          <button
+            onClick={() => onTabChange('profile')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'profile'
+                ? 'bg-[#1A222B] text-[#00E676] shadow-sm'
+                : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Perfil de Vehículo & Tacómetro</span>
+          </button>
+        </nav>
       </div>
 
       <div className="flex items-center gap-3">
@@ -47,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Carga la sesión sintética con casos difíciles (cortes GPS, OBD y offset negativo)"
         >
           <Zap className="w-3.5 h-3.5 text-[#FFB300]" />
-          <span>Cargar muestra sintética</span>
+          <span className="hidden sm:inline">Cargar muestra sintética</span>
         </button>
 
         <button

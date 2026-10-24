@@ -4,9 +4,11 @@ import { importSessionZip } from './core/zip/zipImporter';
 import { Navbar } from './ui/components/Navbar';
 import { ZipDropzone } from './ui/components/ZipDropzone';
 import { SessionSummaryScreen } from './ui/screens/SessionSummaryScreen';
+import { VehicleProfileScreen } from './ui/screens/VehicleProfileScreen';
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<SessionBundle | null>(null);
+  const [activeTab, setActiveTab] = useState<'summary' | 'profile'>('summary');
   const [isLoading, setIsLoading] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -26,6 +28,7 @@ export const App: React.FC = () => {
         setProgressPercent(pct);
       });
       setSession(bundle);
+      setActiveTab('summary');
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'Error desconocido al abrir el archivo.');
@@ -70,13 +73,17 @@ export const App: React.FC = () => {
 
       <Navbar
         sessionTitle={session?.title}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         onOpenZipClick={() => fileInputRef.current?.click()}
         onLoadSyntheticClick={handleLoadSynthetic}
         isLoading={isLoading}
       />
 
       <main className="flex-1 pb-16">
-        {!session ? (
+        {activeTab === 'profile' ? (
+          <VehicleProfileScreen session={session} />
+        ) : !session ? (
           <ZipDropzone
             onFileSelected={handleProcessFile}
             onLoadSynthetic={handleLoadSynthetic}
