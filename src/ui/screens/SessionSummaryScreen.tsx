@@ -14,6 +14,7 @@ import {
 import { SessionBundle } from '../../core/model/session';
 import { StandardSignalKey } from '../../core/model/telemetry';
 import { ColumnMapperModal } from '../components/ColumnMapperModal';
+import { TimeEngineInspector } from '../components/TimeEngineInspector';
 import { parseTelemetryCsv } from '../../core/csv/csvParser';
 
 interface SessionSummaryScreenProps {
@@ -313,6 +314,9 @@ export const SessionSummaryScreen: React.FC<SessionSummaryScreenProps> = ({
           </div>
         </div>
       )}
+
+      {/* 3.5. Inspector del Motor de Tiempo e Interpolación */}
+      <TimeEngineInspector session={session} />
 
       {/* 4. Tabla de Señales Encontradas & Frecuencias */}
       <div className="bg-[#13181E] border border-[#2C3947] rounded-xl p-5 shadow-lg space-y-4">
