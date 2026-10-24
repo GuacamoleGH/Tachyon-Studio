@@ -1,0 +1,200 @@
+import { BaseWidget, WidgetRenderContext } from '../widgets/types';
+import { TachometerCircularWidget } from '../widgets/TachometerWidget';
+import { ShiftLightsWidget } from '../widgets/ShiftLightsWidget';
+import { SpeedometerWidget } from '../widgets/SpeedometerWidget';
+import { GMeterWidget } from '../widgets/GMeterWidget';
+import { PedalWidget } from '../widgets/PedalWidget';
+import { MapWidget } from '../widgets/MapWidget';
+import { SpeedGraphWidget } from '../widgets/SpeedGraphWidget';
+import { VehicleProfile } from '../../core/profile/vehicleProfile';
+import { TelemetrySnapshot } from '../../core/telemetry/timeEngine';
+import { TelemetryPoint } from '../../core/model/telemetry';
+import { CockpitColors } from '../../core/theme/colors';
+
+export interface OverlayLayoutConfig {
+  width: number;
+  height: number;
+}
+
+/**
+ * Orquestador del overlay de telemetría estilo MyChron 5 para vista previa y renderizado.
+ */
+export class OverlayRenderer {
+  public widgets: BaseWidget[] = [];
+  public width: number = 1280;
+  public height: number = 720;
+  public showTimer: boolean = true;
+  public opacity: number = 1.0;
+
+  constructor(width: number = 1280, height: number = 720) {
+    this.width = width;
+    this.height = height;
+    this.initDefaultLayout();
+  }
+
+  /**
+   * Configura la disposición de widgets estilo MyChron 5 optimizada para la resolución dada.
+   */
+  public initDefaultLayout(): void {
+    const w = this.width;
+    const h = this.height;
+
+    // 1. Shift Lights en la parte superior central
+    const shiftW = Math.min(380, w * 0.35);
+    const shiftLights = new ShiftLightsWidget({
+      x: (w - shiftW) / 2,
+      y: 25,
+      width: shiftW,
+      height: 44,
+    });
+
+    // 2. Tacómetro Circular inferior izquierdo
+    const tachSize = Math.min(260, h * 0.38);
+    const tachometer = new TachometerCircularWidget({
+      x: 35,
+      y: h - tachSize - 35,
+      width: tachSize,
+      height: tachSize,
+    });
+
+    // 3. Velocímetro Digital grande inferior
+    const speedW = 210;
+    const speedH = 110;
+    const speedX = tachometer.bounds.x + tachometer.bounds.width + 16;
+    const speedometer = new SpeedometerWidget({
+      x: speedX,
+      y: h - speedH - 35,
+      width: speedW,
+      height: speedH,
+    });
+
+    // 4. Pedal de acelerador
+    const pedalW = 55;
+    const pedal = new PedalWidget({
+      x: speedX + speedW + 14,
+      y: h - speedH - 35,
+      width: pedalW,
+      height: speedH,
+    });
+
+    // 5. G-Meter inferior derecho
+    const gmSize = 145;
+    const gMeter = new GMeterWidget({
+      x: w - gmSize - 35,
+      y: h - gmSize - 35,
+      width: gmSize,
+      height: gmSize,
+    });
+
+    // 6. Mapa GPS superior derecho
+    const mapW = 180;
+    const mapH = 135;
+    const mapWidget = new MapWidget({
+      x: w - mapW - 35,
+      y: 25,
+      width: mapW,
+      height: mapH,
+    });
+
+    // 7. Gráfica de perfil de velocidad inferior
+    const graphX = pedal.bounds.x + pedalW + 16;
+    const graphW = Math.max(120, gMeter.bounds.x - graphX - 18);
+    const speedGraph = new SpeedGraphWidget({
+      x: graphX,
+      y: h - speedH - 35,
+      width: graphW,
+      height: speedH,
+    });
+
+    this.widgets = [
+      shiftLights,
+      tachometer,
+      speedometer,
+      pedal,
+      gMeter,
+      mapWidget,
+      speedGraph,
+    ];
+  }
+
+  /**
+   * Actualiza las dimensiones y recoloca los widgets si cambia la resolución del vídeo.
+   */
+  public resize(width: number, height: number): void {
+    if (this.width === width && this.height === height) return;
+    this.width = width;
+    this.height = height;
+    this.initDefaultLayout();
+  }
+
+  /**
+   * Renderiza el fotograma completo del overlay sobre el contexto Canvas 2D.
+   */
+  public render(
+    ctx: CanvasRenderingContext2D,
+    snapshot: TelemetrySnapshot,
+    profile: VehicleProfile,
+    timeSec: number,
+    allPoints?: TelemetryPoint[]
+  ): void {
+    ctx.save();
+    if (this.opacity < 1.0) {
+      ctx.globalAlpha = this.opacity;
+    }
+
+    const renderContext: WidgetRenderContext = {
+      ctx,
+      snapshot,
+      profile,
+      timeSec,
+      allPoints,
+    };
+
+    // 1. Dibujar cada widget activo
+    for (let i = 0; i < this.widgets.length; i++) {
+      const widget = this.widgets[i];
+      if (widget.visible) {
+        widget.render(renderContext);
+      }
+    }
+
+    // 2. Cronómetro de tiempo en la esquina superior izquierda
+    if (this.showTimer) {
+      this.renderTimer(ctx, timeSec);
+    }
+
+    ctx.restore();
+  }
+
+  private renderTimer(ctx: CanvasRenderingContext2D, timeSec: number): void {
+    const isNegative = timeSec < 0;
+    const absSec = Math.abs(timeSec);
+    const minutes = Math.floor(absSec / 60);
+    const seconds = Math.floor(absSec % 60);
+    const tenths = Math.floor((absSec - Math.floor(absSec)) * 10);
+
+    const sign = isNegative ? '-' : '';
+    const timeStr = `${sign}${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')}.${tenths}`;
+
+    const x = 35;
+    const y = 30;
+    const w = 140;
+    const h = 36;
+
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 6);
+    ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
+    ctx.fill();
+    ctx.strokeStyle = CockpitColors.border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = 'bold 16px ui-monospace, SFMono-Regular, monospace';
+    ctx.fillStyle = isNegative ? CockpitColors.neonAmber : CockpitColors.textPrimary;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(timeStr, x + w / 2, y + h / 2);
+  }
+}

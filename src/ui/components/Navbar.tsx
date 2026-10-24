@@ -1,13 +1,16 @@
 import React from 'react';
-import { Gauge, Upload, Zap, Sliders, FileText } from 'lucide-react';
+import { Gauge, Upload, Zap, Sliders, FileText, PlayCircle } from 'lucide-react';
+
+export type AppTab = 'summary' | 'profile' | 'player';
 
 interface NavbarProps {
   sessionTitle?: string;
-  activeTab: 'summary' | 'profile';
-  onTabChange: (tab: 'summary' | 'profile') => void;
+  activeTab: AppTab;
+  onTabChange: (tab: AppTab) => void;
   onOpenZipClick: () => void;
   onLoadSyntheticClick: () => void;
   isLoading: boolean;
+  hasSession: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenZipClick,
   onLoadSyntheticClick,
   isLoading,
+  hasSession,
 }) => {
   return (
     <header className="border-b border-[#2C3947] bg-[#13181E] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
@@ -44,11 +48,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Pestañas de Navegación */}
+        {/* Pestañas de Navegación principales */}
         <nav className="hidden md:flex items-center gap-1.5 bg-[#090C0E] p-1 rounded-xl border border-[#2C3947]">
           <button
             onClick={() => onTabChange('summary')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            disabled={!hasSession}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               activeTab === 'summary'
                 ? 'bg-[#1A222B] text-[#00E676] shadow-sm'
                 : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
@@ -56,6 +61,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <FileText className="w-3.5 h-3.5" />
             <span>Resumen de Sesión</span>
+          </button>
+
+          <button
+            onClick={() => onTabChange('player')}
+            disabled={!hasSession}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              activeTab === 'player'
+                ? 'bg-[#1A222B] text-[#00E5FF] shadow-sm font-bold'
+                : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
+            }`}
+          >
+            <PlayCircle className="w-3.5 h-3.5 text-[#00E5FF]" />
+            <span>Reproductor con Overlay</span>
           </button>
 
           <button
@@ -67,7 +85,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Perfil de Vehículo & Tacómetro</span>
+            <span>Perfil de Vehículo</span>
           </button>
         </nav>
       </div>

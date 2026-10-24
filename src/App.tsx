@@ -1,14 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { SessionBundle } from './core/model/session';
 import { importSessionZip } from './core/zip/zipImporter';
-import { Navbar } from './ui/components/Navbar';
+import { AppTab, Navbar } from './ui/components/Navbar';
 import { ZipDropzone } from './ui/components/ZipDropzone';
 import { SessionSummaryScreen } from './ui/screens/SessionSummaryScreen';
 import { VehicleProfileScreen } from './ui/screens/VehicleProfileScreen';
+import { VideoPlayerScreen } from './ui/screens/VideoPlayerScreen';
+import { VehicleProfile, deriveProfileFromAppConfig } from './core/profile/vehicleProfile';
 
 export const App: React.FC = () => {
   const [session, setSession] = useState<SessionBundle | null>(null);
-  const [activeTab, setActiveTab] = useState<'summary' | 'profile'>('summary');
+  const [activeTab, setActiveTab] = useState<AppTab>('summary');
+  const [currentProfile, setCurrentProfile] = useState<VehicleProfile | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [progressText, setProgressText] = useState('');
   const [progressPercent, setProgressPercent] = useState(0);
@@ -28,6 +31,9 @@ export const App: React.FC = () => {
         setProgressPercent(pct);
       });
       setSession(bundle);
+      if (bundle.vehicleConfigWithOrigin) {
+        setCurrentProfile(deriveProfileFromAppConfig(bundle.vehicleConfigWithOrigin.config));
+      }
       setActiveTab('summary');
     } catch (err: unknown) {
       console.error(err);
@@ -78,11 +84,14 @@ export const App: React.FC = () => {
         onOpenZipClick={() => fileInputRef.current?.click()}
         onLoadSyntheticClick={handleLoadSynthetic}
         isLoading={isLoading}
+        hasSession={session !== null}
       />
 
       <main className="flex-1 pb-16">
         {activeTab === 'profile' ? (
-          <VehicleProfileScreen session={session} />
+          <VehicleProfileScreen session={session} onProfileUpdated={setCurrentProfile} />
+        ) : activeTab === 'player' && session ? (
+          <VideoPlayerScreen session={session} profile={currentProfile} />
         ) : !session ? (
           <ZipDropzone
             onFileSelected={handleProcessFile}
