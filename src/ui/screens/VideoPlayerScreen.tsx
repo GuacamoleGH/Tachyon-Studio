@@ -17,6 +17,8 @@ import { SessionBundle } from '../../core/model/session';
 import { TimeEngine } from '../../core/telemetry/timeEngine';
 import { OverlayRenderer } from '../../engine/canvas/overlayRenderer';
 import { VehicleProfile, deriveProfileFromAppConfig, PRESET_GASOLINA_ESTANDAR } from '../../core/profile/vehicleProfile';
+import { RenderModal } from './RenderModal';
+import { Cpu } from 'lucide-react';
 
 interface VideoPlayerScreenProps {
   session: SessionBundle;
@@ -47,6 +49,7 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [overlayOpacity, setOverlayOpacity] = useState<number>(1.0);
+  const [isRenderModalOpen, setIsRenderModalOpen] = useState<boolean>(false);
 
   // Snapshot actual en currentTime
   const snapshot = useMemo(() => engine.query(currentTime), [engine, currentTime]);
@@ -274,19 +277,32 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
           </div>
         )}
 
-        {/* Control de opacidad del overlay */}
-        <div className="flex items-center gap-2 text-xs font-mono text-[#8B9CB0]">
-          <span>Opacidad Overlay:</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={overlayOpacity}
-            onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
-            className="w-20 accent-[#00E676] cursor-pointer"
-          />
-          <span className="text-[#F0F4F8] w-8">{Math.round(overlayOpacity * 100)}%</span>
+        <div className="flex items-center gap-4">
+          {/* Control de opacidad del overlay */}
+          <div className="flex items-center gap-2 text-xs font-mono text-[#8B9CB0]">
+            <span>Opacidad:</span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={overlayOpacity}
+              onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
+              className="w-16 accent-[#00E676] cursor-pointer"
+            />
+            <span className="text-[#F0F4F8] w-7">{Math.round(overlayOpacity * 100)}%</span>
+          </div>
+
+          <button
+            onClick={() => {
+              if (isPlaying) togglePlay();
+              setIsRenderModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#00E676] hover:bg-[#00c864] text-[#090C0E] transition-all cursor-pointer shadow-[0_0_12px_rgba(0,230,118,0.25)]"
+          >
+            <Cpu className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Exportar Vídeo</span>
+          </button>
         </div>
       </div>
 
@@ -468,6 +484,15 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
           </div>
         </div>
       </div>
+
+      {/* Modal de Renderizado por WebCodecs */}
+      <RenderModal
+        isOpen={isRenderModalOpen}
+        onClose={() => setIsRenderModalOpen(false)}
+        session={session}
+        profile={profile}
+        renderer={overlayRenderer}
+      />
     </div>
   );
 };

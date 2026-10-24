@@ -12,8 +12,11 @@
   "dependencies": {
     "fflate": "^0.8.2",
     "lucide-react": "^1.16.0",
+    "mediabunny": "^1.62.1",
+    "mp4-muxer": "^5.2.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "webm-muxer": "^5.1.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
