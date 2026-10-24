@@ -1,7 +1,7 @@
 import React from 'react';
-import { Gauge, Upload, Zap, Sliders, FileText, PlayCircle } from 'lucide-react';
+import { Gauge, Upload, Zap, Sliders, FileText, PlayCircle, LayoutTemplate } from 'lucide-react';
 
-export type AppTab = 'summary' | 'profile' | 'player';
+export type AppTab = 'summary' | 'profile' | 'player' | 'editor';
 
 interface NavbarProps {
   sessionTitle?: string;
@@ -53,39 +53,51 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             onClick={() => onTabChange('summary')}
             disabled={!hasSession}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               activeTab === 'summary'
                 ? 'bg-[#1A222B] text-[#00E676] shadow-sm'
                 : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>Resumen de Sesión</span>
+            <span>Resumen</span>
           </button>
 
           <button
             onClick={() => onTabChange('player')}
             disabled={!hasSession}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
               activeTab === 'player'
                 ? 'bg-[#1A222B] text-[#00E5FF] shadow-sm font-bold'
                 : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
             }`}
           >
             <PlayCircle className="w-3.5 h-3.5 text-[#00E5FF]" />
-            <span>Reproductor con Overlay</span>
+            <span>Reproductor</span>
+          </button>
+
+          <button
+            onClick={() => onTabChange('editor')}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'editor'
+                ? 'bg-[#1A222B] text-[#00E676] shadow-sm font-bold'
+                : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
+            }`}
+          >
+            <LayoutTemplate className="w-3.5 h-3.5 text-[#00E676]" />
+            <span>Editor de Plantillas</span>
           </button>
 
           <button
             onClick={() => onTabChange('profile')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'profile'
                 ? 'bg-[#1A222B] text-[#00E676] shadow-sm'
                 : 'text-[#8B9CB0] hover:text-[#F0F4F8]'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
-            <span>Perfil de Vehículo</span>
+            <span>Perfil Vehículo</span>
           </button>
         </nav>
       </div>
@@ -98,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Carga la sesión sintética con casos difíciles (cortes GPS, OBD y offset negativo)"
         >
           <Zap className="w-3.5 h-3.5 text-[#FFB300]" />
-          <span className="hidden sm:inline">Cargar muestra sintética</span>
+          <span className="hidden sm:inline">Cargar muestra</span>
         </button>
 
         <button

@@ -10,6 +10,7 @@ import { VehicleProfile } from '../../core/profile/vehicleProfile';
 import { TelemetrySnapshot } from '../../core/telemetry/timeEngine';
 import { TelemetryPoint } from '../../core/model/telemetry';
 import { CockpitColors } from '../../core/theme/colors';
+import { OverlayTemplate, WidgetSerializedConfig } from '../../core/templates/templateModel';
 
 export interface OverlayLayoutConfig {
   width: number;
@@ -118,13 +119,22 @@ export class OverlayRenderer {
   }
 
   /**
-   * Actualiza las dimensiones y recoloca los widgets si cambia la resolución del vídeo.
+   * Actualiza las dimensiones y escala proporcionalmente los widgets existentes.
    */
   public resize(width: number, height: number): void {
     if (this.width === width && this.height === height) return;
+    const scaleX = width / this.width;
+    const scaleY = height / this.height;
     this.width = width;
     this.height = height;
-    this.initDefaultLayout();
+
+    for (let i = 0; i < this.widgets.length; i++) {
+      const b = this.widgets[i].bounds;
+      b.x = Math.round(b.x * scaleX);
+      b.y = Math.round(b.y * scaleY);
+      b.width = Math.round(b.width * scaleX);
+      b.height = Math.round(b.height * scaleY);
+    }
   }
 
   /**
@@ -164,6 +174,100 @@ export class OverlayRenderer {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Aplica una plantilla estructurada al renderizador.
+   */
+  public applyTemplate(template: OverlayTemplate): void {
+    this.width = template.resolution.width;
+    this.height = template.resolution.height;
+    this.opacity = template.opacity ?? 1.0;
+    this.showTimer = template.show_timer ?? true;
+
+    this.widgets = template.widgets.map((w) => this.createWidgetInstance(w));
+  }
+
+  /**
+   * Exporta la disposición actual como una plantilla OverlayTemplate.
+   */
+  public toTemplate(name: string = 'Mi Plantilla Personalizada'): OverlayTemplate {
+    const serializedWidgets: WidgetSerializedConfig[] = this.widgets.map((w) => {
+      const props: Record<string, any> = {};
+      if (w instanceof SpeedometerWidget) {
+        props.preferredSource = w.preferredSource;
+      } else if (w instanceof GMeterWidget) {
+        props.maxScaleG = w.maxScaleG;
+        props.preferredLongSource = w.preferredLongSource;
+      }
+
+      return {
+        id: w.id,
+        type: w.type,
+        name: w.name,
+        bounds: { ...w.bounds },
+        visible: w.visible,
+        properties: Object.keys(props).length > 0 ? props : undefined,
+      };
+    });
+
+    return {
+      schema_version: '1.0.0',
+      id: 'template_' + Date.now(),
+      name,
+      resolution: { width: this.width, height: this.height },
+      unit_system: 'metric',
+      opacity: this.opacity,
+      show_timer: this.showTimer,
+      widgets: serializedWidgets,
+    };
+  }
+
+  /**
+   * Fábrica para instanciar widgets a partir de su configuración serializada.
+   */
+  public createWidgetInstance(config: WidgetSerializedConfig): BaseWidget {
+    let widget: BaseWidget;
+
+    switch (config.type) {
+      case 'shift_lights':
+        widget = new ShiftLightsWidget({ ...config.bounds });
+        break;
+      case 'tachometer_circular':
+        widget = new TachometerCircularWidget({ ...config.bounds });
+        break;
+      case 'speedometer':
+        widget = new SpeedometerWidget({ ...config.bounds });
+        if (config.properties?.preferredSource) {
+          (widget as SpeedometerWidget).preferredSource = config.properties.preferredSource;
+        }
+        break;
+      case 'throttle':
+        widget = new PedalWidget({ ...config.bounds });
+        break;
+      case 'g_meter':
+        widget = new GMeterWidget({ ...config.bounds });
+        if (config.properties?.maxScaleG) {
+          (widget as GMeterWidget).maxScaleG = config.properties.maxScaleG;
+        }
+        if (config.properties?.preferredLongSource) {
+          (widget as GMeterWidget).preferredLongSource = config.properties.preferredLongSource;
+        }
+        break;
+      case 'map':
+        widget = new MapWidget({ ...config.bounds });
+        break;
+      case 'speed_graph':
+        widget = new SpeedGraphWidget({ ...config.bounds });
+        break;
+      default:
+        widget = new TachometerCircularWidget({ ...config.bounds });
+    }
+
+    widget.id = config.id;
+    widget.name = config.name;
+    widget.visible = config.visible;
+    return widget;
   }
 
   private renderTimer(ctx: CanvasRenderingContext2D, timeSec: number): void {

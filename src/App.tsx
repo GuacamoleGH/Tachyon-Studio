@@ -6,6 +6,7 @@ import { ZipDropzone } from './ui/components/ZipDropzone';
 import { SessionSummaryScreen } from './ui/screens/SessionSummaryScreen';
 import { VehicleProfileScreen } from './ui/screens/VehicleProfileScreen';
 import { VideoPlayerScreen } from './ui/screens/VideoPlayerScreen';
+import { TemplateEditorScreen } from './ui/screens/TemplateEditorScreen';
 import { VehicleProfile, deriveProfileFromAppConfig } from './core/profile/vehicleProfile';
 
 export const App: React.FC = () => {
@@ -90,6 +91,8 @@ export const App: React.FC = () => {
       <main className="flex-1 pb-16">
         {activeTab === 'profile' ? (
           <VehicleProfileScreen session={session} onProfileUpdated={setCurrentProfile} />
+        ) : activeTab === 'editor' ? (
+          <TemplateEditorScreen session={session} profile={currentProfile} />
         ) : activeTab === 'player' && session ? (
           <VideoPlayerScreen session={session} profile={currentProfile} />
         ) : !session ? (
