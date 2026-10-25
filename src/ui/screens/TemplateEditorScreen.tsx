@@ -833,7 +833,7 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
                   <div>
                     <label className="block text-[#8B9CB0] mb-1">Modo de Trazada / Minimapa:</label>
                     <select
-                      value={selectedWidget.properties?.mode || 'chase_heading'}
+                      value={selectedWidget.properties?.mode || 'chase_north'}
                       onChange={(e) => {
                         const m = e.target.value;
                         setTemplate((prev) => ({
@@ -847,8 +847,8 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
                       }}
                       className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2 py-1 text-[#F0F4F8]"
                     >
-                      <option value="chase_heading">Minimapa Videojuego (Rotación con Rumbo)</option>
-                      <option value="chase_north">Minimapa Centrado (Norte Arriba)</option>
+                      <option value="chase_north">Minimapa Centrado (Norte Arriba - Fluido)</option>
+                      <option value="chase_heading">Minimapa con Rotación de Rumbo</option>
                       <option value="full_circuit">Circuito Completo (Estático)</option>
                     </select>
                   </div>

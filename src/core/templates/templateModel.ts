@@ -76,7 +76,7 @@ export const TEMPLATE_MYCHRON_5: OverlayTemplate = {
       name: 'Trazada GPS (Minimapa)',
       bounds: { x: 1065, y: 25, width: 180, height: 135 },
       visible: true,
-      properties: { mode: 'chase_heading', zoomMeters: 400 },
+      properties: { mode: 'chase_north', zoomMeters: 400 },
     },
     {
       id: 'speed_graph',
@@ -200,7 +200,7 @@ export const TEMPLATE_GT3_COMPETICION: OverlayTemplate = {
       name: 'Trazada GPS (Minimapa)',
       bounds: { x: 1065, y: 20, width: 180, height: 135 },
       visible: true,
-      properties: { mode: 'chase_heading', zoomMeters: 400 },
+      properties: { mode: 'chase_north', zoomMeters: 400 },
     },
     {
       id: 'speed_graph',

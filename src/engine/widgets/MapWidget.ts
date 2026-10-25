@@ -11,10 +11,10 @@ export class MapWidget implements BaseWidget {
   public visible: boolean = true;
 
   // Modo de visualización de la trazada:
-  // 'chase_heading': minimapa de videojuego con zoom centrado en el coche rotando con el rumbo
-  // 'chase_north': minimapa centrado en el coche con norte arriba
+  // 'chase_north': minimapa fluido centrado en el coche con norte arriba (suave, sin tirones de rotación)
+  // 'chase_heading': minimapa con rotación según rumbo
   // 'full_circuit': vista de todo el circuito completo estático
-  public mode: MapDisplayMode = 'chase_heading';
+  public mode: MapDisplayMode = 'chase_north';
 
   // Radio en metros visible para el zoom del minimapa dinámico
   public zoomMeters: number = 400;
@@ -182,39 +182,25 @@ export class MapWidget implements BaseWidget {
       ctx.lineJoin = 'round';
       ctx.stroke();
 
-      // 3. Vehículo centrado en (cx, cy)
-      // Halo exterior
+      // 3. Vehículo centrado en (cx, cy) - Puntito limpio de alta visibilidad
+      // Halo exterior difuso
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.max(6, Math.round(9 * scale)), 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0, 230, 118, 0.35)';
+      ctx.arc(cx, cy, Math.max(7, Math.round(10 * scale)), 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0, 230, 118, 0.3)';
       ctx.fill();
 
-      // Flecha indicadora de dirección del vehículo
-      const arrowAngle = rotateWithHeading ? -Math.PI / 2 : ((headingDeg - 90) * Math.PI) / 180;
-      const arrowLen = Math.max(7, Math.round(11 * scale));
-      const arrowWidth = Math.max(4, Math.round(6 * scale));
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(arrowAngle + Math.PI / 2); // Orientar hacia arriba como 0 rad
-
+      // Círculo verde neón con borde blanco
       ctx.beginPath();
-      ctx.moveTo(0, -arrowLen);
-      ctx.lineTo(arrowWidth, arrowLen * 0.6);
-      ctx.lineTo(0, arrowLen * 0.2);
-      ctx.lineTo(-arrowWidth, arrowLen * 0.6);
-      ctx.closePath();
+      ctx.arc(cx, cy, Math.max(4, Math.round(5.5 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = CockpitColors.neonGreen;
       ctx.fill();
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
       ctx.stroke();
 
-      ctx.restore();
-
-      // Núcleo brillante
+      // Núcleo blanco brillante
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.max(2, Math.round(3 * scale)), 0, Math.PI * 2);
+      ctx.arc(cx, cy, Math.max(1.5, Math.round(2 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = '#FFFFFF';
       ctx.fill();
 
@@ -291,33 +277,29 @@ export class MapWidget implements BaseWidget {
     ctx.lineJoin = 'round';
     ctx.stroke();
 
-    // Posición del coche
+    // Posición del coche - Puntito limpio
     if (snapshot.gpsAvailable && snapshot.latitude != null && snapshot.longitude != null) {
       const { px, py } = project(snapshot.latitude, snapshot.longitude);
 
       // Halo exterior
       ctx.beginPath();
-      ctx.arc(px, py, Math.max(4, Math.round(6 * scale)), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(6, Math.round(8 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 230, 118, 0.35)';
       ctx.fill();
 
-      // Punto central
+      // Punto central verde con núcleo blanco
       ctx.beginPath();
-      ctx.arc(px, py, Math.max(2, Math.round(3.5 * scale)), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(3.5, Math.round(5 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = CockpitColors.neonGreen;
       ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
+      ctx.stroke();
 
-      // Flecha de rumbo si está disponible
-      if (snapshot.bearingAvailable && snapshot.bearingDeg != null) {
-        const rad = ((snapshot.bearingDeg - 90) * Math.PI) / 180;
-        const arrowLen = Math.max(5, Math.round(9 * scale));
-        ctx.beginPath();
-        ctx.moveTo(px, py);
-        ctx.lineTo(px + Math.cos(rad) * arrowLen, py + Math.sin(rad) * arrowLen);
-        ctx.strokeStyle = CockpitColors.neonGreen;
-        ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
-        ctx.stroke();
-      }
+      ctx.beginPath();
+      ctx.arc(px, py, Math.max(1.5, Math.round(2 * scale)), 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
     } else {
       // Estado de corte GPS
       ctx.font = `bold ${Math.max(8, Math.round(9 * scale))}px ui-monospace, SFMono-Regular, monospace`;
