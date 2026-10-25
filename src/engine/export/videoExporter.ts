@@ -236,8 +236,7 @@ export class VideoExporter {
       // Si hay vídeo, buscar el fotograma
       if (hasVideo && videoSourceElement) {
         if (t >= 0 && t <= videoSourceElement.duration) {
-          videoSourceElement.currentTime = t;
-          await waitForVideoSeek(videoSourceElement);
+          await seekVideoTo(videoSourceElement, t);
           ctx.drawImage(videoSourceElement, 0, 0, width, height);
         } else {
           // Fondo negro si t está en offset negativo o fuera del vídeo
@@ -340,16 +339,33 @@ export class VideoExporter {
   }
 }
 
-function waitForVideoSeek(video: HTMLVideoElement): Promise<void> {
+function seekVideoTo(video: HTMLVideoElement, time: number): Promise<void> {
   return new Promise((resolve) => {
-    if (video.seeking) {
-      const onSeeked = () => {
+    // Si el tiempo solicitado es prácticamente el actual (menos de 2ms de diferencia)
+    if (Math.abs(video.currentTime - time) < 0.002 && !video.seeking) {
+      resolve();
+      return;
+    }
+
+    let finished = false;
+    const timer = setTimeout(() => {
+      if (!finished) {
+        finished = true;
         video.removeEventListener('seeked', onSeeked);
         resolve();
-      };
-      video.addEventListener('seeked', onSeeked);
-    } else {
-      resolve();
-    }
+      }
+    }, 250); // Timeout protector de 250ms por frame para garantizar render sin bloqueos
+
+    const onSeeked = () => {
+      if (!finished) {
+        finished = true;
+        clearTimeout(timer);
+        video.removeEventListener('seeked', onSeeked);
+        resolve();
+      }
+    };
+
+    video.addEventListener('seeked', onSeeked, { once: true });
+    video.currentTime = time;
   });
 }

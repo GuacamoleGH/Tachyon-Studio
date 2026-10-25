@@ -119,6 +119,8 @@ export interface SessionBundle {
   videoFileName?: string;
   videoBlob?: Blob;
   videoUrl?: string;
+  videoOversized?: boolean;
+  videoLoadWarning?: string;
 
   rawCsvText: string;
   points: TelemetryPoint[];

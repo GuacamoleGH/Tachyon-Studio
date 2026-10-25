@@ -33,6 +33,8 @@ interface ExtractedZipData {
   gpxBytes?: Uint8Array;
   readmeBytes?: Uint8Array;
   videoBlob?: Blob;
+  videoFileName?: string;
+  videoOversized?: boolean;
 }
 
 /**
@@ -50,6 +52,9 @@ async function extractZipEntries(
 
       const textChunksMap: Record<string, Uint8Array[]> = {};
       const videoBlobParts: BlobPart[] = [];
+      let totalVideoBytes = 0;
+      let videoOversized = false;
+      let detectedVideoName: string | undefined;
       let openFiles = 0;
       let streamFinished = false;
 
@@ -66,8 +71,13 @@ async function extractZipEntries(
           const readmeBytes = findTextEntry('leeme_sincronizacion.txt');
 
           let videoBlob: Blob | undefined;
-          if (videoBlobParts.length > 0) {
-            videoBlob = new Blob(videoBlobParts, { type: 'video/mp4' });
+          if (videoBlobParts.length > 0 && !videoOversized) {
+            try {
+              videoBlob = new Blob(videoBlobParts, { type: 'video/mp4' });
+            } catch (e) {
+              console.warn('No se pudo crear el Blob de vídeo en memoria:', e);
+              videoOversized = true;
+            }
           }
 
           resolve({
@@ -76,6 +86,8 @@ async function extractZipEntries(
             gpxBytes,
             readmeBytes,
             videoBlob,
+            videoFileName: detectedVideoName,
+            videoOversized,
           });
         }
       }
@@ -83,12 +95,20 @@ async function extractZipEntries(
       uz.onfile = (file) => {
         openFiles++;
         const lowerName = file.name.toLowerCase();
-        const isVideo = lowerName.endsWith('video.mp4');
+        const isVideo =
+          lowerName.endsWith('.mp4') ||
+          lowerName.endsWith('.mov') ||
+          lowerName.endsWith('.webm') ||
+          lowerName.endsWith('.mkv');
         const isTargetText =
           lowerName.endsWith('telemetria.csv') ||
           lowerName.endsWith('session.json') ||
           lowerName.endsWith('ruta.gpx') ||
           lowerName.endsWith('leeme_sincronizacion.txt');
+
+        if (isVideo) {
+          detectedVideoName = file.name;
+        }
 
         if (isTargetText) {
           textChunksMap[lowerName] = [];
@@ -100,7 +120,15 @@ async function extractZipEntries(
           }
           if (chunk) {
             if (isVideo) {
-              videoBlobParts.push(chunk);
+              totalVideoBytes += chunk.length;
+              // Chrome / Chromium tiene un límite en memoria de 2 GB para Blobs creados en JS.
+              // Si el vídeo supera 1.5 GB, evitamos saturar la RAM de V8 y descartamos acumular chunks en memoria.
+              if (totalVideoBytes > 1.5 * 1024 * 1024 * 1024) {
+                videoOversized = true;
+                videoBlobParts.length = 0; // Liberar memoria para no crashear la pestaña
+              } else if (!videoOversized) {
+                videoBlobParts.push(chunk);
+              }
             } else if (isTargetText) {
               textChunksMap[lowerName].push(chunk);
             }
@@ -201,14 +229,20 @@ export async function importSessionZip(
   let hasVideo = false;
   let videoBlob: Blob | undefined = extracted.videoBlob;
   let videoUrl: string | undefined;
+  const videoFileName = extracted.videoFileName || 'video.mp4';
+  let videoLoadWarning: string | undefined;
 
   if (videoBlob && videoBlob.size > 0) {
     hasVideo = true;
     if (typeof URL !== 'undefined' && URL.createObjectURL) {
       videoUrl = URL.createObjectURL(videoBlob);
     }
-  } else if (metadata?.video_synchronization?.has_video) {
+  } else if (extracted.videoOversized || metadata?.video_synchronization?.has_video) {
     hasVideo = true;
+    if (extracted.videoOversized) {
+      videoLoadWarning =
+        'El vídeo contenido en el archivo ZIP supera 1.5 GB. Los navegadores (Chrome/Edge) limitan a 2 GB los Blobs descompresos en memoria RAM. Puedes vincular el archivo video.mp4 directamente desde tu disco con 1 clic para una reproducción y exportación fluidas por hardware.';
+    }
   }
 
   // 4. Calcular estadísticas de señales, frecuencias reales y detección de huecos
@@ -258,9 +292,11 @@ export async function importSessionZip(
     avgSpeedKmh: avgSpeed,
     totalPoints: points.length,
     hasVideo,
-    videoFileName: hasVideo ? 'video.mp4' : undefined,
+    videoFileName: hasVideo ? videoFileName : undefined,
     videoBlob,
     videoUrl,
+    videoOversized: extracted.videoOversized,
+    videoLoadWarning,
     rawCsvText,
     points,
     timeRange,

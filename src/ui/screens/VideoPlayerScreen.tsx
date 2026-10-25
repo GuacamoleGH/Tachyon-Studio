@@ -12,13 +12,14 @@ import {
   AlertTriangle,
   Gauge,
   Film,
+  Cpu,
+  Upload,
 } from 'lucide-react';
 import { SessionBundle } from '../../core/model/session';
 import { TimeEngine } from '../../core/telemetry/timeEngine';
 import { OverlayRenderer } from '../../engine/canvas/overlayRenderer';
 import { VehicleProfile, deriveProfileFromAppConfig, PRESET_GASOLINA_ESTANDAR } from '../../core/profile/vehicleProfile';
 import { RenderModal } from './RenderModal';
-import { Cpu } from 'lucide-react';
 
 interface VideoPlayerScreenProps {
   session: SessionBundle;
@@ -40,6 +41,12 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [videoUrl, setVideoUrl] = useState<string | undefined>(session.videoUrl);
+  const [videoLoadError, setVideoLoadError] = useState<string | null>(
+    session.videoLoadWarning || null
+  );
 
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<number>(0.0);
@@ -53,6 +60,25 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
 
   // Snapshot actual en currentTime
   const snapshot = useMemo(() => engine.query(currentTime), [engine, currentTime]);
+
+  const handleSelectLocalVideo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const newUrl = URL.createObjectURL(file);
+      session.videoUrl = newUrl;
+      session.videoBlob = file;
+      session.hasVideo = true;
+      session.videoFileName = file.name;
+      session.videoOversized = false;
+      session.videoLoadWarning = undefined;
+      setVideoUrl(newUrl);
+      setVideoLoadError(null);
+      if (videoRef.current) {
+        videoRef.current.src = newUrl;
+        videoRef.current.load();
+      }
+    }
+  };
 
   // Actualizar opacidad del renderizador
   useEffect(() => {
@@ -278,6 +304,23 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
         )}
 
         <div className="flex items-center gap-4">
+          {/* Vincular vídeo MP4 directo */}
+          <input
+            ref={videoFileInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleSelectLocalVideo}
+          />
+          <button
+            onClick={() => videoFileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#1A222B] hover:bg-[#2C3947] text-[#00E5FF] border border-[#00E5FF]/40 transition-colors cursor-pointer"
+            title="Vincular archivo de vídeo MP4 directamente desde tu disco (ideal para vídeos pesados de más de 2 GB)"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>{videoUrl ? 'Cambiar Vídeo' : 'Vincular Vídeo MP4'}</span>
+          </button>
+
           {/* Control de opacidad del overlay */}
           <div className="flex items-center gap-2 text-xs font-mono text-[#8B9CB0]">
             <span>Opacidad:</span>
@@ -311,11 +354,20 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
         ref={containerRef}
         className="relative bg-black rounded-2xl overflow-hidden border border-[#2C3947] shadow-2xl aspect-video flex items-center justify-center select-none group"
       >
-        {session.hasVideo && session.videoUrl ? (
+        {session.hasVideo && videoUrl ? (
           <video
             ref={videoRef}
-            src={session.videoUrl}
-            onLoadedMetadata={handleVideoLoadedMetadata}
+            src={videoUrl}
+            onLoadedMetadata={() => {
+              setVideoLoadError(null);
+              handleVideoLoadedMetadata();
+            }}
+            onError={() => {
+              console.error('Error al decodificar vídeo en el navegador:', videoRef.current?.error);
+              setVideoLoadError(
+                'El navegador no pudo reproducir el vídeo descomprimido del archivo ZIP (los navegadores restringen a 2 GB los Blobs en memoria RAM). Vincula el archivo MP4 original directamente desde tu disco con el botón de abajo para reproducirlo al instante.'
+              );
+            }}
             onEnded={() => setIsPlaying(false)}
             onClick={togglePlay}
             playsInline
@@ -327,10 +379,38 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
             <span className="text-base font-bold text-[#F0F4F8]">
               Vista previa sobre lienzo de telemetría
             </span>
-            <span className="text-xs text-[#8B9CB0] mt-1 max-w-sm">
-              Esta sesión no incluye pista de vídeo o está en modo autónomo. Todos los instrumentos se
-              sincronizan a 60 fps con el tiempo de telemetría.
+            <span className="text-xs text-[#8B9CB0] mt-1 max-w-sm mb-3">
+              Esta sesión no incluye pista de vídeo o el archivo supera el límite de memoria del navegador.
             </span>
+            <button
+              onClick={() => videoFileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#00E5FF] hover:bg-[#00cce6] text-[#090C0E] transition-all cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Vincular archivo video.mp4</span>
+            </button>
+          </div>
+        )}
+
+        {/* Banner de error o aviso por archivo superior a 2 GB */}
+        {videoLoadError && (
+          <div className="absolute inset-0 z-20 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-fadeIn">
+            <div className="w-12 h-12 rounded-2xl bg-[#FF1744]/20 border border-[#FF1744]/40 flex items-center justify-center text-[#FF1744] mb-3">
+              <AlertTriangle className="w-6 h-6 stroke-[2.2]" />
+            </div>
+            <h3 className="text-base font-bold text-[#F0F4F8] mb-1">
+              Vídeo bloqueado por límite de memoria del navegador (2 GB)
+            </h3>
+            <p className="text-xs text-[#8B9CB0] max-w-md mb-4 leading-relaxed">
+              {videoLoadError}
+            </p>
+            <button
+              onClick={() => videoFileInputRef.current?.click()}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#00E5FF] hover:bg-[#00cce6] text-[#090C0E] shadow-[0_0_20px_rgba(0,229,255,0.35)] transition-all cursor-pointer hover:scale-105"
+            >
+              <Film className="w-4 h-4 stroke-[2.5]" />
+              <span>Seleccionar archivo video.mp4 desde tu disco</span>
+            </button>
           </div>
         )}
 
@@ -343,7 +423,7 @@ export const VideoPlayerScreen: React.FC<VideoPlayerScreenProps> = ({ session, p
         />
 
         {/* Overlay de pausa en el centro */}
-        {!isPlaying && (
+        {!isPlaying && !videoLoadError && (
           <button
             onClick={togglePlay}
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-[#13181E]/80 backdrop-blur-md border border-[#2C3947] text-[#00E676] flex items-center justify-center shadow-2xl hover:scale-110 transition-all cursor-pointer opacity-85 hover:opacity-100"

@@ -43,9 +43,16 @@ export const RenderModal: React.FC<RenderModalProps> = ({
   );
 
   const duration = session.durationSec || 90.0;
+  const metadataVideoDur = session.metadata?.video?.duration_sec;
+  const initialDuration =
+    session.hasVideo && metadataVideoDur && metadataVideoDur > 0
+      ? metadataVideoDur
+      : duration;
+
+  const [videoDuration, setVideoDuration] = useState<number | null>(metadataVideoDur || null);
   const [startSec, setStartSec] = useState<number>(0.0);
-  const [endSec, setEndSec] = useState<number>(duration);
-  const [fps, setFps] = useState<number>(60);
+  const [endSec, setEndSec] = useState<number>(initialDuration);
+  const [fps, setFps] = useState<number>(30); // 30 FPS por defecto: el estándar en móviles y el doble de rápido
   const [resolution, setResolution] = useState<{ width: number; height: number }>({
     width: 1920,
     height: 1080,
@@ -137,6 +144,21 @@ export const RenderModal: React.FC<RenderModalProps> = ({
           muted
           className="hidden"
           crossOrigin="anonymous"
+          onLoadedMetadata={(e) => {
+            const v = e.currentTarget;
+            if (v.duration && isFinite(v.duration) && v.duration > 0) {
+              const dur = Math.round(v.duration * 10) / 10;
+              setVideoDuration(dur);
+              setEndSec((prevEnd) => {
+                // Si endSec aún estaba por defecto al total de la sesión (ej. 672s o 1345s)
+                // y el vídeo dura 6s, ajustarlo automáticamente a la duración real del vídeo.
+                if (prevEnd >= duration || prevEnd > dur) {
+                  return dur;
+                }
+                return prevEnd;
+              });
+            }
+          }}
         />
       )}
 
@@ -310,7 +332,7 @@ export const RenderModal: React.FC<RenderModalProps> = ({
               </div>
 
               {/* 2. Selección de Tramo */}
-              <div className="bg-[#1A222B] p-3.5 rounded-xl border border-[#2C3947] space-y-2">
+              <div className="bg-[#1A222B] p-3.5 rounded-xl border border-[#2C3947] space-y-2.5">
                 <div className="flex justify-between items-center text-[#8B9CB0]">
                   <span className="font-bold flex items-center gap-1.5 uppercase">
                     <Clock className="w-3.5 h-3.5 text-[#00E5FF]" />
@@ -319,6 +341,56 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                   <span className="text-[#00E676] font-bold">
                     Duración: {(endSec - startSec).toFixed(1)} segundos
                   </span>
+                </div>
+
+                {/* Botones de ajuste rápido de tramo */}
+                <div className="flex flex-wrap gap-1.5 text-[11px]">
+                  {videoDuration && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartSec(0);
+                        setEndSec(videoDuration);
+                      }}
+                      className="px-2.5 py-1 rounded bg-[#090C0E] hover:bg-[#2C3947] text-[#00E5FF] border border-[#00E5FF]/40 transition-colors cursor-pointer"
+                    >
+                      🎬 Vídeo completo (0.0s - {videoDuration}s)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartSec(0);
+                      setEndSec(duration);
+                    }}
+                    className="px-2.5 py-1 rounded bg-[#090C0E] hover:bg-[#2C3947] text-[#8B9CB0] hover:text-[#F0F4F8] border border-[#2C3947] transition-colors cursor-pointer"
+                  >
+                    📊 Toda la telemetría (0.0s - {duration.toFixed(1)}s)
+                  </button>
+                  {duration > 15 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartSec(0);
+                        setEndSec(Math.min(15, duration));
+                      }}
+                      className="px-2.5 py-1 rounded bg-[#090C0E] hover:bg-[#2C3947] text-[#8B9CB0] hover:text-[#F0F4F8] border border-[#2C3947] transition-colors cursor-pointer"
+                    >
+                      ⏱️ 15s
+                    </button>
+                  )}
+                  {duration > 30 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStartSec(0);
+                        setEndSec(Math.min(30, duration));
+                      }}
+                      className="px-2.5 py-1 rounded bg-[#090C0E] hover:bg-[#2C3947] text-[#8B9CB0] hover:text-[#F0F4F8] border border-[#2C3947] transition-colors cursor-pointer"
+                    >
+                      ⏱️ 30s
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 pt-1">
@@ -346,6 +418,23 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                       className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2.5 py-1.5 text-[#F0F4F8] outline-none"
                     />
                   </div>
+                </div>
+
+                {/* Estimación de fotogramas y tiempo */}
+                <div className="flex items-center justify-between text-[11px] text-[#8B9CB0] bg-[#090C0E] p-2.5 rounded-lg border border-[#2C3947]/70">
+                  <span>
+                    Total a codificar:{' '}
+                    <strong className="text-[#00E5FF]">
+                      {Math.max(1, Math.round((endSec - startSec) * fps))} fotogramas
+                    </strong>{' '}
+                    a {fps} FPS
+                  </span>
+                  <span>
+                    Tiempo estimado:{' '}
+                    <strong className="text-[#00E676]">
+                      ~{Math.max(1, Math.round(((endSec - startSec) * fps) / (fps === 60 ? 12 : 18)))} segundos
+                    </strong>
+                  </span>
                 </div>
               </div>
 
@@ -375,7 +464,7 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                     onChange={(e) => setFps(parseInt(e.target.value))}
                     className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2.5 py-1.5 text-[#F0F4F8]"
                   >
-                    <option value={30}>30 FPS (Estándar)</option>
+                    <option value={30}>30 FPS (Recomendado - 2x más rápido)</option>
                     <option value={60}>60 FPS (Ultra Suave)</option>
                   </select>
                 </div>
