@@ -136,6 +136,32 @@ export const BUILTIN_TEMPLATES: OverlayTemplate[] = [
   TEMPLATE_MINIMALISTA,
 ];
 
+/**
+ * Escala proporcionalmente todas las dimensiones y coordenadas de los widgets
+ * de una plantilla al cambiar su resolución objetivo (p.ej. 720p -> 1080p -> 2K -> 4K).
+ */
+export function scaleTemplate(template: OverlayTemplate, newWidth: number, newHeight: number): OverlayTemplate {
+  const oldW = template.resolution.width;
+  const oldH = template.resolution.height;
+  if (oldW === newWidth && oldH === newHeight) return template;
+  const scaleX = newWidth / oldW;
+  const scaleY = newHeight / oldH;
+
+  return {
+    ...template,
+    resolution: { width: newWidth, height: newHeight },
+    widgets: template.widgets.map((w) => ({
+      ...w,
+      bounds: {
+        x: Math.round(w.bounds.x * scaleX),
+        y: Math.round(w.bounds.y * scaleY),
+        width: Math.round(w.bounds.width * scaleX),
+        height: Math.round(w.bounds.height * scaleY),
+      },
+    })),
+  };
+}
+
 const TEMPLATE_STORAGE_KEY = 'tachyon_saved_custom_template';
 
 export function saveTemplateToStorage(template: OverlayTemplate): void {

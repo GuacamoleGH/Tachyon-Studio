@@ -363,6 +363,7 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                   >
                     <option value="1280x720">720p HD</option>
                     <option value="1920x1080">1080p Full HD</option>
+                    <option value="2560x1440">2K QHD (2560x1440)</option>
                     <option value="3840x2160">4K Ultra HD</option>
                   </select>
                 </div>

@@ -17,25 +17,30 @@ export class SpeedGraphWidget implements BaseWidget {
     const { ctx, allPoints, timeSec } = context;
     const { x, y, width, height } = this.bounds;
 
+    const scale = Math.min(width / 480, height / 110);
+    const cornerRadius = Math.max(3, Math.round(8 * scale));
+    const titleFontSize = Math.max(8, Math.round(10 * scale));
+
     ctx.save();
 
     // Fondo del panel
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 8);
+    ctx.roundRect(x, y, width, height, cornerRadius);
     ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
     ctx.fill();
     ctx.strokeStyle = CockpitColors.border;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
     ctx.stroke();
 
     // Título
-    ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+    ctx.font = `bold ${titleFontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.fillStyle = CockpitColors.textSecondary;
     ctx.textAlign = 'left';
-    ctx.fillText('PERFIL DE VELOCIDAD', x + 10, y + 15);
+    ctx.fillText('PERFIL DE VELOCIDAD', x + Math.round(10 * scale), y + Math.round(15 * scale));
 
     if (!allPoints || allPoints.length === 0) {
-      ctx.font = '11px ui-monospace, SFMono-Regular, monospace';
+      const emptyFontSize = Math.max(9, Math.round(11 * scale));
+      ctx.font = `bold ${emptyFontSize}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = CockpitColors.textMuted;
       ctx.textAlign = 'center';
       ctx.fillText('Sin datos', x + width / 2, y + height / 2);
@@ -55,17 +60,17 @@ export class SpeedGraphWidget implements BaseWidget {
     }
     maxSpd = Math.ceil(maxSpd / 20) * 20;
 
-    const padX = 14;
-    const padY = 22;
+    const padX = Math.max(8, Math.round(14 * scale));
+    const padY = Math.max(14, Math.round(22 * scale));
     const graphW = width - padX * 2;
-    const graphH = height - padY - 14;
+    const graphH = height - padY - Math.max(6, Math.round(10 * scale));
     const graphX = x + padX;
     const graphY = y + padY;
 
     // Líneas guía horizontales
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(44, 57, 71, 0.5)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(0.75, Math.round(1 * scale));
     for (let s = 0; s <= maxSpd; s += maxSpd / 2) {
       const lineY = graphY + graphH - (s / maxSpd) * graphH;
       ctx.moveTo(graphX, lineY);
@@ -92,7 +97,7 @@ export class SpeedGraphWidget implements BaseWidget {
       }
     }
     ctx.strokeStyle = CockpitColors.neonGreen;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
     ctx.stroke();
 
     // Cursor vertical del tiempo actual
@@ -102,12 +107,12 @@ export class SpeedGraphWidget implements BaseWidget {
       ctx.moveTo(cursorX, graphY);
       ctx.lineTo(cursorX, graphY + graphH);
       ctx.strokeStyle = CockpitColors.neonCyan;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
       ctx.stroke();
 
       // Indicador luminoso en la cabecera del cursor
       ctx.beginPath();
-      ctx.arc(cursorX, graphY, 3, 0, Math.PI * 2);
+      ctx.arc(cursorX, graphY, Math.max(2, Math.round(3 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = CockpitColors.neonCyan;
       ctx.fill();
     }

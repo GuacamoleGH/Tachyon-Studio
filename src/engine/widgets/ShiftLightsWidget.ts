@@ -33,16 +33,26 @@ export class ShiftLightsWidget implements BaseWidget {
     // Parpadeo estroboscópico determinista dependiente únicamente del tiempo de vídeo
     const flashState = (Math.floor(timeSec * flashHz) % 2 === 0);
 
+    const scale = Math.min(width / 340, height / 44);
+    const cornerRadius = Math.max(3, Math.round(8 * scale));
+    const paddingX = Math.max(6, Math.round(14 * scale));
+    const gap = Math.max(2, Math.round(6 * scale));
+    const availableW = width - paddingX * 2;
+    const ledW = Math.max(4, (availableW - (ledCount - 1) * gap) / ledCount);
+    const ledH = Math.max(6, height - Math.round(16 * scale));
+    const ledY = y + (height - ledH) / 2;
+    const ledRadius = Math.max(2, Math.round(4 * scale));
+
     ctx.save();
 
     // Fondo del panel de shift lights
     ctx.beginPath();
     const borderColor = isShift && flashState ? CockpitColors.neonRed : CockpitColors.border;
-    ctx.roundRect(x, y, width, height, 8);
+    ctx.roundRect(x, y, width, height, cornerRadius);
     ctx.fillStyle = 'rgba(19, 24, 30, 0.9)';
     ctx.fill();
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
     ctx.stroke();
 
     // Determinar cuántos LEDs deben encenderse (0 a ledCount)
@@ -57,14 +67,6 @@ export class ShiftLightsWidget implements BaseWidget {
         activeLeds = Math.min(ledCount, Math.max(1, Math.round(ratio * ledCount)));
       }
     }
-
-    // Dibujar los LEDs individuales
-    const paddingX = 14;
-    const availableW = width - paddingX * 2;
-    const gap = 6;
-    const ledW = (availableW - (ledCount - 1) * gap) / ledCount;
-    const ledH = height - 18;
-    const ledY = y + 9;
 
     for (let i = 0; i < ledCount; i++) {
       let isLedOn = false;
@@ -98,32 +100,33 @@ export class ShiftLightsWidget implements BaseWidget {
       const ledX = x + paddingX + i * (ledW + gap);
 
       ctx.beginPath();
-      ctx.roundRect(ledX, ledY, ledW, ledH, 4);
+      ctx.roundRect(ledX, ledY, ledW, ledH, ledRadius);
       ctx.fillStyle = color;
       ctx.fill();
 
       // Borde sutil del LED
       ctx.strokeStyle = isLedOn ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = Math.max(0.75, Math.round(1 * scale));
       ctx.stroke();
     }
 
     // Cartel "⚡ SHIFT!" parpadeante a la derecha o superpuesto
     if (isShift && flashState) {
-      const badgeW = 75;
-      const badgeH = 26;
-      const badgeX = x + width + 8;
+      const badgeW = Math.round(75 * scale);
+      const badgeH = Math.round(26 * scale);
+      const badgeX = x + width + Math.round(8 * scale);
       const badgeY = y + (height - badgeH) / 2;
+      const badgeFontSize = Math.max(9, Math.round(12 * scale));
 
       ctx.beginPath();
-      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      ctx.roundRect(badgeX, badgeY, badgeW, badgeH, Math.max(3, Math.round(6 * scale)));
       ctx.fillStyle = CockpitColors.neonRed;
       ctx.fill();
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
       ctx.stroke();
 
-      ctx.font = 'black 12px ui-monospace, SFMono-Regular, monospace';
+      ctx.font = `bold ${badgeFontSize}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = '#FFFFFF';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

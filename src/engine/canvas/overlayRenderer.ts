@@ -282,20 +282,22 @@ export class OverlayRenderer {
       .toString()
       .padStart(2, '0')}.${tenths}`;
 
-    const x = 35;
-    const y = 30;
-    const w = 140;
-    const h = 36;
+    const scale = Math.min(this.width / 1280, this.height / 720);
+    const x = Math.round(35 * scale);
+    const y = Math.round(30 * scale);
+    const w = Math.round(140 * scale);
+    const h = Math.round(36 * scale);
+    const fontSize = Math.max(12, Math.round(16 * scale));
 
     ctx.beginPath();
-    ctx.roundRect(x, y, w, h, 6);
+    ctx.roundRect(x, y, w, h, Math.max(3, Math.round(6 * scale)));
     ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
     ctx.fill();
     ctx.strokeStyle = CockpitColors.border;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = Math.max(1, Math.round(1 * scale));
     ctx.stroke();
 
-    ctx.font = 'bold 16px ui-monospace, SFMono-Regular, monospace';
+    ctx.font = `bold ${fontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.fillStyle = isNegative ? CockpitColors.neonAmber : CockpitColors.textPrimary;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

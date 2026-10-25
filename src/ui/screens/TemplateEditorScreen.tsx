@@ -19,6 +19,7 @@ import {
   loadTemplateFromStorage,
   OverlayTemplate,
   saveTemplateToStorage,
+  scaleTemplate,
   TEMPLATE_MYCHRON_5,
 } from '../../core/templates/templateModel';
 import { SessionBundle } from '../../core/model/session';
@@ -98,6 +99,9 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -758,12 +762,13 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
               value={`${template.resolution.width}x${template.resolution.height}`}
               onChange={(e) => {
                 const [w, h] = e.target.value.split('x').map(Number);
-                setTemplate((prev) => ({ ...prev, resolution: { width: w, height: h } }));
+                setTemplate((prev) => scaleTemplate(prev, w, h));
               }}
-              className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2 py-1 text-[#F0F4F8]"
+              className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2 py-1 text-[#F0F4F8] outline-none cursor-pointer focus:border-[#00E676]"
             >
               <option value="1280x720">1280 x 720 (720p HD)</option>
               <option value="1920x1080">1920 x 1080 (1080p Full HD)</option>
+              <option value="2560x1440">2560 x 1440 (2K QHD)</option>
               <option value="3840x2160">3840 x 2160 (4K Ultra HD)</option>
             </select>
           </div>

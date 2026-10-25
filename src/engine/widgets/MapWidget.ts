@@ -19,26 +19,30 @@ export class MapWidget implements BaseWidget {
     if (!this.visible) return;
     const { ctx, snapshot, allPoints } = context;
     const { x, y, width, height } = this.bounds;
+    const scale = Math.min(width / 180, height / 135);
+    const cornerRadius = Math.max(3, Math.round(8 * scale));
+    const titleFontSize = Math.max(8, Math.round(10 * scale));
 
     ctx.save();
 
     // Fondo del panel
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 8);
+    ctx.roundRect(x, y, width, height, cornerRadius);
     ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
     ctx.fill();
     ctx.strokeStyle = CockpitColors.border;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
     ctx.stroke();
 
     // Etiqueta
-    ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+    ctx.font = `bold ${titleFontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.fillStyle = CockpitColors.textSecondary;
     ctx.textAlign = 'left';
-    ctx.fillText('TRAZADA GPS', x + 10, y + 15);
+    ctx.fillText('TRAZADA GPS', x + Math.round(10 * scale), y + Math.round(15 * scale));
 
     if (!allPoints || allPoints.length === 0) {
-      ctx.font = '11px ui-monospace, SFMono-Regular, monospace';
+      const emptyFontSize = Math.max(9, Math.round(11 * scale));
+      ctx.font = `bold ${emptyFontSize}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = CockpitColors.textMuted;
       ctx.textAlign = 'center';
       ctx.fillText('Sin datos GPS', x + width / 2, y + height / 2);
@@ -108,7 +112,7 @@ export class MapWidget implements BaseWidget {
     }
 
     ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = Math.max(1.5, Math.round(2.5 * scale));
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.stroke();
@@ -119,33 +123,33 @@ export class MapWidget implements BaseWidget {
 
       // Halo exterior
       ctx.beginPath();
-      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(4, Math.round(6 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(0, 230, 118, 0.35)';
       ctx.fill();
 
       // Punto central
       ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.arc(px, py, Math.max(2, Math.round(3.5 * scale)), 0, Math.PI * 2);
       ctx.fillStyle = CockpitColors.neonGreen;
       ctx.fill();
 
       // Flecha de rumbo si está disponible
       if (snapshot.bearingAvailable && snapshot.bearingDeg != null) {
         const rad = ((snapshot.bearingDeg - 90) * Math.PI) / 180;
-        const arrowLen = 9;
+        const arrowLen = Math.max(5, Math.round(9 * scale));
         ctx.beginPath();
         ctx.moveTo(px, py);
         ctx.lineTo(px + Math.cos(rad) * arrowLen, py + Math.sin(rad) * arrowLen);
         ctx.strokeStyle = CockpitColors.neonGreen;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
         ctx.stroke();
       }
     } else {
       // Estado de corte GPS
-      ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+      ctx.font = `bold ${Math.max(8, Math.round(9 * scale))}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = CockpitColors.neonRed;
       ctx.textAlign = 'right';
-      ctx.fillText('SIN GPS', x + width - 10, y + 15);
+      ctx.fillText('SIN GPS', x + width - Math.round(10 * scale), y + Math.round(15 * scale));
     }
 
     ctx.restore();

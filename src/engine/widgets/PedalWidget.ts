@@ -20,57 +20,66 @@ export class PedalWidget implements BaseWidget {
     const throttle = snapshot.throttlePct;
     const isAvailable = snapshot.throttleAvailable && throttle !== null;
 
+    const scale = Math.min(width / 55, height / 110);
+    const cornerRadius = Math.max(3, Math.round(8 * scale));
+    const labelFontSize = Math.max(8, Math.round(10 * scale));
+    const valFontSize = Math.max(9, Math.round(12 * scale));
+
     ctx.save();
 
     // Fondo del panel
     ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 8);
+    ctx.roundRect(x, y, width, height, cornerRadius);
     ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
     ctx.fill();
     ctx.strokeStyle = CockpitColors.border;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
     ctx.stroke();
 
     // Etiqueta
-    ctx.font = 'bold 9px ui-monospace, SFMono-Regular, monospace';
+    ctx.font = `bold ${labelFontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.fillStyle = CockpitColors.textSecondary;
     ctx.textAlign = 'center';
-    ctx.fillText('PEDAL', x + width / 2, y + 14);
+    ctx.textBaseline = 'top';
+    ctx.fillText('PEDAL', x + width / 2, y + Math.round(6 * scale));
 
     // Barra vertical
-    const barPadding = 12;
+    const barPadding = Math.max(6, Math.round(10 * scale));
     const barX = x + barPadding;
-    const barW = width - barPadding * 2;
-    const barY = y + 22;
-    const barH = height - 42;
+    const barW = Math.max(8, width - barPadding * 2);
+    const barTop = y + Math.round(20 * scale);
+    const barBottom = y + height - Math.round(22 * scale);
+    const barH = Math.max(10, barBottom - barTop);
 
     // Fondo de la barra
     ctx.beginPath();
-    ctx.roundRect(barX, barY, barW, barH, 4);
+    ctx.roundRect(barX, barTop, barW, barH, Math.max(2, Math.round(4 * scale)));
     ctx.fillStyle = CockpitColors.cardBg;
     ctx.fill();
 
     if (isAvailable && throttle !== null) {
       const clampedPct = Math.max(0, Math.min(100, throttle));
       const fillH = (clampedPct / 100) * barH;
-      const fillY = barY + barH - fillH;
+      const fillY = barTop + barH - fillH;
 
       ctx.beginPath();
-      ctx.roundRect(barX, fillY, barW, fillH, 4);
-      const gradient = ctx.createLinearGradient(0, barY + barH, 0, barY);
+      ctx.roundRect(barX, fillY, barW, fillH, Math.max(2, Math.round(4 * scale)));
+      const gradient = ctx.createLinearGradient(0, barTop + barH, 0, barTop);
       gradient.addColorStop(0, CockpitColors.neonGreen);
       gradient.addColorStop(1, CockpitColors.neonCyan);
       ctx.fillStyle = gradient;
       ctx.fill();
 
       // Porcentaje numérico
-      ctx.font = 'bold 11px ui-monospace, SFMono-Regular, monospace';
+      ctx.font = `bold ${valFontSize}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = CockpitColors.textPrimary;
-      ctx.fillText(`${Math.round(clampedPct)}%`, x + width / 2, y + height - 8);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`${Math.round(clampedPct)}%`, x + width / 2, y + height - Math.round(4 * scale));
     } else {
-      ctx.font = 'bold 10px ui-monospace, SFMono-Regular, monospace';
+      ctx.font = `bold ${valFontSize}px ui-monospace, SFMono-Regular, monospace`;
       ctx.fillStyle = CockpitColors.textMuted;
-      ctx.fillText('N/D', x + width / 2, y + height - 8);
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('N/D', x + width / 2, y + height - Math.round(4 * scale));
     }
 
     ctx.restore();

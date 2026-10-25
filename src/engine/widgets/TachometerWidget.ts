@@ -30,7 +30,9 @@ export class TachometerCircularWidget implements BaseWidget {
 
     const cx = x + width / 2;
     const cy = y + height / 2;
-    const radius = Math.min(width, height) / 2 - 16;
+    const scale = Math.min(width, height) / 260;
+    const radius = Math.min(width, height) / 2 - Math.max(8, Math.round(16 * scale));
+    const arcLineWidth = Math.max(5, Math.round(10 * scale));
 
     // Ángulo de barrido: desde 135° (3*pi/4) hasta 405° (9*pi/4) = 270 grados totales
     const startAngle = (3 * Math.PI) / 4;
@@ -41,18 +43,18 @@ export class TachometerCircularWidget implements BaseWidget {
 
     // Fondo del reloj con esquinas redondeadas o circular
     ctx.beginPath();
-    ctx.arc(cx, cy, radius + 12, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius + Math.max(6, Math.round(12 * scale)), 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(19, 24, 30, 0.85)';
     ctx.fill();
     ctx.strokeStyle = CockpitColors.border;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, Math.round(1.5 * scale));
     ctx.stroke();
 
     // 1. Arco base de fondo (inactivo)
     ctx.beginPath();
     ctx.arc(cx, cy, radius, startAngle, endAngle);
     ctx.strokeStyle = CockpitColors.cardBg;
-    ctx.lineWidth = 10;
+    ctx.lineWidth = arcLineWidth;
     ctx.lineCap = 'round';
     ctx.stroke();
 
@@ -63,7 +65,7 @@ export class TachometerCircularWidget implements BaseWidget {
     ctx.beginPath();
     ctx.arc(cx, cy, radius, redlineAngle, endAngle);
     ctx.strokeStyle = CockpitColors.neonRed;
-    ctx.lineWidth = 10;
+    ctx.lineWidth = arcLineWidth;
     ctx.lineCap = 'butt';
     ctx.stroke();
 
@@ -80,7 +82,7 @@ export class TachometerCircularWidget implements BaseWidget {
       ctx.beginPath();
       ctx.arc(cx, cy, radius, startAngle, currentAngle);
       ctx.strokeStyle = gradient;
-      ctx.lineWidth = 10;
+      ctx.lineWidth = arcLineWidth;
       ctx.lineCap = 'round';
       ctx.stroke();
     }
@@ -88,18 +90,23 @@ export class TachometerCircularWidget implements BaseWidget {
     // 4. Marcas y etiquetas numéricas
     const majorTick = rpmConfig.major_tick || 1000;
     const totalTicks = Math.floor(scaleMax / majorTick);
+    const tickFontSize = Math.max(9, Math.round(12 * scale));
 
-    ctx.font = '11px ui-monospace, SFMono-Regular, monospace';
+    ctx.font = `bold ${tickFontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    const tickInnerOffset = Math.max(8, Math.round(14 * scale));
+    const tickOuterOffset = Math.max(3, Math.round(6 * scale));
+    const textRadiusOffset = Math.max(16, Math.round(28 * scale));
 
     for (let i = 0; i <= totalTicks; i++) {
       const tickRpm = i * majorTick;
       const ratio = tickRpm / scaleMax;
       const angle = startAngle + ratio * sweepAngle;
 
-      const innerR = radius - 14;
-      const outerR = radius - 6;
+      const innerR = radius - tickInnerOffset;
+      const outerR = radius - tickOuterOffset;
 
       const x1 = cx + Math.cos(angle) * innerR;
       const y1 = cy + Math.sin(angle) * innerR;
@@ -110,11 +117,11 @@ export class TachometerCircularWidget implements BaseWidget {
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.strokeStyle = tickRpm >= redlineStart ? CockpitColors.neonRed : CockpitColors.textSecondary;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = Math.max(1.5, Math.round(2 * scale));
       ctx.stroke();
 
       // Número de la marca
-      const textR = radius - 26;
+      const textR = radius - textRadiusOffset;
       const tx = cx + Math.cos(angle) * textR;
       const ty = cy + Math.sin(angle) * textR;
       const label = (tickRpm / labelDivisor).toString();
@@ -126,35 +133,39 @@ export class TachometerCircularWidget implements BaseWidget {
     // 5. Aguja indicadora
     const needleRatio = isAvailable ? displayRpm / scaleMax : 0;
     const needleAngle = startAngle + needleRatio * sweepAngle;
-    const needleLen = radius - 8;
+    const needleLen = radius - Math.max(4, Math.round(8 * scale));
 
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(needleAngle) * needleLen, cy + Math.sin(needleAngle) * needleLen);
     ctx.strokeStyle = isAvailable ? CockpitColors.neonCyan : CockpitColors.textMuted;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = Math.max(2, Math.round(3.5 * scale));
     ctx.lineCap = 'round';
     ctx.stroke();
 
     // Centro del eje
+    const centerRadius = Math.max(4, Math.round(7 * scale));
     ctx.beginPath();
-    ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.arc(cx, cy, centerRadius, 0, Math.PI * 2);
     ctx.fillStyle = isAvailable ? CockpitColors.neonCyan : CockpitColors.textMuted;
     ctx.fill();
 
     // 6. Valor numérico digital de RPM en el centro inferior
-    ctx.font = 'bold 20px ui-monospace, SFMono-Regular, monospace';
+    const digitalFontSize = Math.max(14, Math.round(22 * scale));
+    ctx.font = `bold ${digitalFontSize}px ui-monospace, SFMono-Regular, monospace`;
+    const digitalY = cy + Math.round(38 * scale);
     if (isAvailable) {
       ctx.fillStyle = rawRpm! >= redlineStart ? CockpitColors.neonRed : CockpitColors.textPrimary;
-      ctx.fillText(`${Math.round(rawRpm!)}`, cx, cy + 38);
+      ctx.fillText(`${Math.round(rawRpm!)}`, cx, digitalY);
     } else {
       ctx.fillStyle = CockpitColors.textMuted;
-      ctx.fillText('N/D', cx, cy + 38);
+      ctx.fillText('N/D', cx, digitalY);
     }
 
-    ctx.font = '10px ui-monospace, SFMono-Regular, monospace';
+    const subLabelFontSize = Math.max(8, Math.round(10 * scale));
+    ctx.font = `bold ${subLabelFontSize}px ui-monospace, SFMono-Regular, monospace`;
     ctx.fillStyle = CockpitColors.textSecondary;
-    ctx.fillText('RPM x1000', cx, cy + 54);
+    ctx.fillText('RPM x1000', cx, digitalY + Math.round(18 * scale));
 
     ctx.restore();
   }
