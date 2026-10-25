@@ -71,9 +71,11 @@ export const ZipDropzone: React.FC<ZipDropzoneProps> = ({
           disabled={isLoading}
         />
 
-        <div className="w-24 h-24 rounded-2xl bg-[#1A222B]/90 border border-[#2C3947] flex items-center justify-center p-3 mb-5 shadow-[0_0_35px_rgba(0,230,118,0.25)] hover:scale-105 transition-transform overflow-hidden">
-          <img src="/logo.png" alt="Tachyon Studio Logo" className="w-full h-full object-contain" />
-        </div>
+        <img
+          src="/logo.png"
+          alt="Tachyon Studio Logo"
+          className="w-24 h-24 rounded-2xl mb-5 shadow-[0_0_30px_rgba(0,230,118,0.25)] hover:scale-105 transition-transform object-contain"
+        />
 
         <h3 className="text-xl font-bold text-[#F0F4F8] tracking-wide mb-2">
           Arrastra tu paquete ZIP de sesión aquí
