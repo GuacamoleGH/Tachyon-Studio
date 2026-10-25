@@ -5,7 +5,12 @@ import { TimeEngine } from '../../core/telemetry/timeEngine';
 import { VehicleProfile } from '../../core/profile/vehicleProfile';
 import { TelemetryPoint } from '../../core/model/telemetry';
 
-export type ExportMode = 'mp4_combined' | 'webm_transparent' | 'mp4_telemetry_only';
+export type ExportMode =
+  | 'mp4_combined'
+  | 'mp4_telemetry_only'
+  | 'mp4_chroma_green'
+  | 'webm_telemetry'
+  | 'webm_transparent';
 
 export interface ExportProgress {
   percent: number;
@@ -88,7 +93,7 @@ export class VideoExporter {
 
     const durationSec = Math.max(0.1, endSec - startSec);
     const totalFrames = Math.max(1, Math.round(durationSec * fps));
-    const isWebmAlpha = mode === 'webm_transparent';
+    const isWebm = mode === 'webm_telemetry' || mode === 'webm_transparent';
 
     onProgress?.({
       percent: 0,
@@ -106,13 +111,13 @@ export class VideoExporter {
 
     if (useFileSystemAccess && isFileSystemAccessSupported()) {
       try {
-        const fileExt = isWebmAlpha ? 'webm' : 'mp4';
-        const fileMime = isWebmAlpha ? 'video/webm' : 'video/mp4';
+        const fileExt = isWebm ? 'webm' : 'mp4';
+        const fileMime = isWebm ? 'video/webm' : 'video/mp4';
         fileHandle = await (window as any).showSaveFilePicker({
           suggestedName: `tachyon_${mode}_${width}p_${Math.round(startSec)}-${Math.round(endSec)}s.${fileExt}`,
           types: [
             {
-              description: isWebmAlpha ? 'Vídeo WebM con canal alfa' : 'Vídeo MP4 con telemetría',
+              description: isWebm ? 'Vídeo WebM' : 'Vídeo MP4 con telemetría',
               accept: { [fileMime]: [`.${fileExt}`] },
             },
           ],
@@ -131,7 +136,7 @@ export class VideoExporter {
     let mp4Muxer: Mp4Muxer<any> | null = null;
     let webmMuxer: WebmMuxer<any> | null = null;
 
-    if (isWebmAlpha) {
+    if (isWebm) {
       const target = writableStream
         ? new WebmFileSystemTarget(writableStream)
         : new WebmArrayBufferTarget();
@@ -142,7 +147,6 @@ export class VideoExporter {
           codec: 'V_VP9',
           width,
           height,
-          alpha: true,
         },
       });
     } else {
@@ -164,15 +168,15 @@ export class VideoExporter {
     // 3. Configurar VideoEncoder de WebCodecs
     const VideoEncoderClass = (window as any).VideoEncoder;
     let videoEncoder: any = null;
+    let encoderError: Error | null = null;
 
-    const encoderConfig = isWebmAlpha
+    const encoderConfig: any = isWebm
       ? {
           codec: 'vp09.00.10.08',
           width,
           height,
           bitrate,
           framerate: fps,
-          alpha: 'keep',
         }
       : {
           codec: 'avc1.640028', // H.264 High Profile Level 4.0
@@ -185,14 +189,14 @@ export class VideoExporter {
     const isSupported = await VideoEncoderClass.isConfigSupported(encoderConfig);
     if (!isSupported.supported) {
       // Fallback a Baseline profile si High profile no está soportado en la GPU
-      if (!isWebmAlpha) {
+      if (!isWebm) {
         encoderConfig.codec = 'avc1.42001f';
       }
     }
 
     videoEncoder = new VideoEncoderClass({
       output: (chunk: any, meta: any) => {
-        if (isWebmAlpha && webmMuxer) {
+        if (isWebm && webmMuxer) {
           webmMuxer.addVideoChunk(chunk, meta);
         } else if (mp4Muxer) {
           mp4Muxer.addVideoChunk(chunk, meta);
@@ -200,22 +204,26 @@ export class VideoExporter {
       },
       error: (e: any) => {
         console.error('Error en VideoEncoder:', e);
+        encoderError = e instanceof Error ? e : new Error(e?.message || String(e));
       },
     });
 
-    videoEncoder.configure(encoderConfig);
+    try {
+      videoEncoder.configure(encoderConfig);
+    } catch (err: any) {
+      throw new Error(
+        `Error al configurar el codificador de vídeo (${encoderConfig.codec}): ${err?.message || err}`
+      );
+    }
 
     // 4. Canvas de renderizado fuera de pantalla (OffscreenCanvas si está disponible)
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d', { alpha: isWebmAlpha })!;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
     // Adaptar escala del renderizador al tamaño de exportación
     renderer.resize(width, height);
-
-    // Preparar elemento de vídeo si es modo combinado
-    const hasVideo = mode === 'mp4_combined' && videoSourceElement != null;
 
     const VideoFrameClass = (window as any).VideoFrame;
     const startTimeReal = performance.now();
@@ -223,9 +231,19 @@ export class VideoExporter {
     // 5. Bucle cuadro a cuadro determinista
     for (let frameIdx = 0; frameIdx < totalFrames; frameIdx++) {
       if (cancellationToken?.isCancelled) {
-        videoEncoder.close();
+        try { videoEncoder.close(); } catch (_) {}
         if (writableStream) await writableStream.abort();
         throw new Error('Renderizado cancelado por el usuario.');
+      }
+
+      if (encoderError) {
+        throw encoderError;
+      }
+
+      if (videoEncoder.state !== 'configured') {
+        throw new Error(
+          `El codificador de vídeo no está disponible (estado: ${videoEncoder.state}). Intenta exportar en resolución 1080p o cambiar de formato.`
+        );
       }
 
       const t = startSec + frameIdx * (1 / fps);
@@ -233,8 +251,8 @@ export class VideoExporter {
       // Limpiar lienzo
       ctx.clearRect(0, 0, width, height);
 
-      // Si hay vídeo, buscar el fotograma
-      if (hasVideo && videoSourceElement) {
+      // Establecer fondo según el modo elegido
+      if (mode === 'mp4_combined' && videoSourceElement) {
         if (t >= 0 && t <= videoSourceElement.duration) {
           await seekVideoTo(videoSourceElement, t);
           ctx.drawImage(videoSourceElement, 0, 0, width, height);
@@ -243,8 +261,12 @@ export class VideoExporter {
           ctx.fillStyle = '#000000';
           ctx.fillRect(0, 0, width, height);
         }
-      } else if (!isWebmAlpha) {
-        // Fondo negro para exportaciones sin vídeo
+      } else if (mode === 'mp4_chroma_green') {
+        // Fondo verde croma puro (#00FF00) para eliminar con 1 clic en Premiere o DaVinci (Ultra Key)
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        // Fondo negro puro para modo telemetría (se hace transparente con modo de fusión 'Pantalla' / 'Screen')
         ctx.fillStyle = '#090C0E';
         ctx.fillRect(0, 0, width, height);
       }
@@ -303,7 +325,7 @@ export class VideoExporter {
 
     let outputBlob: Blob | undefined;
 
-    if (isWebmAlpha && webmMuxer) {
+    if (isWebm && webmMuxer) {
       webmMuxer.finalize();
       if (!writableStream) {
         const buffer = (webmMuxer.target as WebmArrayBufferTarget).buffer;

@@ -10,6 +10,7 @@ import {
   Layers,
   StopCircle,
   Clock,
+  Gauge,
 } from 'lucide-react';
 import { SessionBundle } from '../../core/model/session';
 import { TimeEngine } from '../../core/telemetry/timeEngine';
@@ -270,7 +271,9 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00E676] hover:bg-[#00c864] text-[#090C0E] font-bold shadow-[0_0_15px_rgba(0,230,118,0.3)] transition-all cursor-pointer"
                 >
                   <Download className="w-4 h-4 stroke-[2.5]" />
-                  <span>Descargar archivo ({mode === 'webm_transparent' ? '.webm' : '.mp4'})</span>
+                  <span>
+                    Descargar archivo ({mode === 'webm_telemetry' || mode === 'webm_transparent' ? '.webm' : '.mp4'})
+                  </span>
                 </button>
               )}
             </div>
@@ -293,12 +296,17 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                   1. Formato y Modo de Salida:
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Opción 1: Vídeo Completo (Cámara + Relojes) */}
                   <div
-                    onClick={() => setMode(session.hasVideo ? 'mp4_combined' : 'mp4_telemetry_only')}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                      mode !== 'webm_transparent'
-                        ? 'bg-[#1A222B] border-[#00E676] shadow-sm'
-                        : 'bg-[#090C0E] border-[#2C3947] hover:border-[#3D4F63]'
+                    onClick={() => {
+                      if (session.hasVideo) setMode('mp4_combined');
+                    }}
+                    className={`p-3 rounded-xl border transition-all flex items-start gap-2.5 ${
+                      !session.hasVideo
+                        ? 'opacity-40 cursor-not-allowed bg-[#090C0E] border-[#2C3947]'
+                        : mode === 'mp4_combined'
+                        ? 'bg-[#1A222B] border-[#00E676] shadow-sm cursor-pointer'
+                        : 'bg-[#090C0E] border-[#2C3947] hover:border-[#3D4F63] cursor-pointer'
                     }`}
                   >
                     <Film className="w-4 h-4 text-[#00E676] shrink-0 mt-0.5" />
@@ -306,25 +314,62 @@ export const RenderModal: React.FC<RenderModalProps> = ({
                       <span className="text-[#F0F4F8] font-bold block">Vídeo Completo MP4</span>
                       <span className="text-[#8B9CB0] text-[11px] block mt-0.5">
                         {session.hasVideo
-                          ? 'Vídeo original con los relojes incrustados (H.264 / AAC)'
-                          : 'Vídeo con fondo negro de los instrumentos'}
+                          ? 'Vídeo de la cámara con los instrumentos incrustados (H.264).'
+                          : 'Requiere vídeo en la sesión para este modo.'}
                       </span>
                     </div>
                   </div>
 
+                  {/* Opción 2: Solo Telemetría Fondo Oscuro (Modo Pantalla / Screen) */}
                   <div
-                    onClick={() => setMode('webm_transparent')}
+                    onClick={() => setMode('mp4_telemetry_only')}
                     className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
-                      mode === 'webm_transparent'
+                      mode === 'mp4_telemetry_only'
+                        ? 'bg-[#1A222B] border-[#00E676] shadow-sm'
+                        : 'bg-[#090C0E] border-[#2C3947] hover:border-[#3D4F63]'
+                    }`}
+                  >
+                    <Gauge className="w-4 h-4 text-[#00E676] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-[#F0F4F8] font-bold block">Solo Telemetría (Fondo Negro MP4)</span>
+                      <span className="text-[#8B9CB0] text-[11px] block mt-0.5">
+                        En Premiere o DaVinci usa el modo de fusión "Pantalla" (Screen) para transparencia.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Opción 3: Solo Telemetría Croma Verde */}
+                  <div
+                    onClick={() => setMode('mp4_chroma_green')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                      mode === 'mp4_chroma_green'
+                        ? 'bg-[#1A222B] border-[#00E676] shadow-sm'
+                        : 'bg-[#090C0E] border-[#2C3947] hover:border-[#3D4F63]'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4 text-[#00E676] shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-[#F0F4F8] font-bold block">Solo Telemetría (Croma Verde MP4)</span>
+                      <span className="text-[#8B9CB0] text-[11px] block mt-0.5">
+                        Fondo verde #00FF00 para eliminarlo en 1 clic con "Ultra Key" o croma.
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Opción 4: Formato WebM VP9 */}
+                  <div
+                    onClick={() => setMode('webm_telemetry')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-2.5 ${
+                      mode === 'webm_telemetry' || mode === 'webm_transparent'
                         ? 'bg-[#1A222B] border-[#00E5FF] shadow-sm'
                         : 'bg-[#090C0E] border-[#2C3947] hover:border-[#3D4F63]'
                     }`}
                   >
-                    <Layers className="w-4 h-4 text-[#00E5FF] shrink-0 mt-0.5" />
+                    <Cpu className="w-4 h-4 text-[#00E5FF] shrink-0 mt-0.5" />
                     <div>
-                      <span className="text-[#F0F4F8] font-bold block">Overlay Transparente WebM</span>
+                      <span className="text-[#F0F4F8] font-bold block">Solo Telemetría WebM (VP9)</span>
                       <span className="text-[#8B9CB0] text-[11px] block mt-0.5">
-                        Fondo alfa transparente (VP9) para importar en DaVinci Resolve o Premiere.
+                        Formato contenedor WebM con códec VP9 compatible para web y navegadores.
                       </span>
                     </div>
                   </div>
