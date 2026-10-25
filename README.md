@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./Tachyon-Studio.png" alt="Tachyon Studio Logo" width="160" />
+<img src="./Tachyon.png" alt="Tachyon Studio Logo" width="160" />
 
 # Tachyon Studio 🏁
 
