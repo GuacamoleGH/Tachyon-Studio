@@ -183,7 +183,27 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
         bearingDeg: 0,
         bearingAvailable: false,
       };
-      renderer.render(ctx, dummySnap, profile, currentTime);
+
+      // Trazada simulada para el minimapa cuando no hay sesión cargada
+      const dummyPoints = Array.from({ length: 120 }, (_, i) => {
+        const angle = (i / 120) * Math.PI * 2;
+        const r = 0.0025 + Math.sin(angle * 3) * 0.0008;
+        return {
+          time_offset_video_sec: i * 0.5,
+          latitude: 40.4168 + Math.cos(angle) * r,
+          longitude: -3.7038 + Math.sin(angle) * r * 1.3,
+          gps_speed_kmh: 110 + Math.sin(angle * 2) * 35,
+        } as any;
+      });
+
+      const carIndex = Math.floor((currentTime % 60) * 2) % dummyPoints.length;
+      dummySnap.latitude = dummyPoints[carIndex].latitude;
+      dummySnap.longitude = dummyPoints[carIndex].longitude;
+      dummySnap.gpsAvailable = true;
+      dummySnap.bearingDeg = Math.round(((carIndex / 120) * 360 + 90) % 360);
+      dummySnap.bearingAvailable = true;
+
+      renderer.render(ctx, dummySnap, profile, currentTime, session?.points || dummyPoints);
     }
 
     // 3. Dibujar marco de selección y manejadores de redimensionado sobre el widget seleccionado
@@ -805,6 +825,57 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
                     <option value="1.5">1.5 G (Competición)</option>
                     <option value="2.0">2.0 G (Fórmula / Kart)</option>
                   </select>
+                </div>
+              )}
+
+              {selectedWidget.type === 'map' && (
+                <div className="pt-2 border-t border-[#2C3947] space-y-3">
+                  <div>
+                    <label className="block text-[#8B9CB0] mb-1">Modo de Trazada / Minimapa:</label>
+                    <select
+                      value={selectedWidget.properties?.mode || 'chase_heading'}
+                      onChange={(e) => {
+                        const m = e.target.value;
+                        setTemplate((prev) => ({
+                          ...prev,
+                          widgets: prev.widgets.map((w) =>
+                            w.id === selectedWidget.id
+                              ? { ...w, properties: { ...w.properties, mode: m } }
+                              : w
+                          ),
+                        }));
+                      }}
+                      className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2 py-1 text-[#F0F4F8]"
+                    >
+                      <option value="chase_heading">Minimapa Videojuego (Rotación con Rumbo)</option>
+                      <option value="chase_north">Minimapa Centrado (Norte Arriba)</option>
+                      <option value="full_circuit">Circuito Completo (Estático)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[#8B9CB0] mb-1">Zoom del Minimapa (Radio):</label>
+                    <select
+                      value={selectedWidget.properties?.zoomMeters || 400}
+                      onChange={(e) => {
+                        const z = parseInt(e.target.value);
+                        setTemplate((prev) => ({
+                          ...prev,
+                          widgets: prev.widgets.map((w) =>
+                            w.id === selectedWidget.id
+                              ? { ...w, properties: { ...w.properties, zoomMeters: z } }
+                              : w
+                          ),
+                        }));
+                      }}
+                      className="w-full bg-[#090C0E] border border-[#2C3947] rounded px-2 py-1 text-[#F0F4F8]"
+                    >
+                      <option value={250}>250 metros (Cercano / Curvas)</option>
+                      <option value={400}>400 metros (Estándar Videojuego)</option>
+                      <option value={800}>800 metros (Circuito Rápido)</option>
+                      <option value={1500}>1500 metros (Tramo de Montaña)</option>
+                    </select>
+                  </div>
                 </div>
               )}
             </div>

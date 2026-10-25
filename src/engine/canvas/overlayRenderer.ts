@@ -203,6 +203,9 @@ export class OverlayRenderer {
       } else if (w instanceof GMeterWidget) {
         props.maxScaleG = w.maxScaleG;
         props.preferredLongSource = w.preferredLongSource;
+      } else if (w instanceof MapWidget) {
+        props.mode = w.mode;
+        props.zoomMeters = w.zoomMeters;
       }
 
       return {
@@ -260,6 +263,12 @@ export class OverlayRenderer {
         break;
       case 'map':
         widget = new MapWidget({ ...config.bounds });
+        if (config.properties?.mode) {
+          (widget as MapWidget).mode = config.properties.mode;
+        }
+        if (config.properties?.zoomMeters) {
+          (widget as MapWidget).zoomMeters = config.properties.zoomMeters;
+        }
         break;
       case 'speed_graph':
         widget = new SpeedGraphWidget({ ...config.bounds });

@@ -7,6 +7,7 @@ import { GearIndicatorWidget } from '../src/engine/widgets/GearIndicatorWidget';
 import { CoolantTempWidget } from '../src/engine/widgets/CoolantTempWidget';
 import { BrakeThrottleWidget } from '../src/engine/widgets/BrakeThrottleWidget';
 import { TachometerBarWidget } from '../src/engine/widgets/TachometerBarWidget';
+import { MapWidget } from '../src/engine/widgets/MapWidget';
 import { PRESET_GASOLINA_ESTANDAR } from '../src/core/profile/vehicleProfile';
 import { TelemetrySnapshot } from '../src/core/telemetry/timeEngine';
 import { STANDARD_SIGNALS, StandardSignalKey } from '../src/core/model/telemetry';
@@ -24,6 +25,11 @@ function createMockCtx(): any {
     lineTo: () => {},
     roundRect: () => {},
     fillText: () => {},
+    clip: () => {},
+    translate: () => {},
+    rotate: () => {},
+    closePath: () => {},
+    setLineDash: () => {},
     createLinearGradient: () => ({ addColorStop: () => {} }),
     set fillStyle(_: any) {},
     set strokeStyle(_: any) {},
@@ -248,5 +254,55 @@ describe('Base Widgets Render Tests', () => {
       profile,
       timeSec: 1.0,
     });
+  });
+
+  it('renderiza MapWidget en modo minimapa dinámico de videojuego (chase_heading) y circuito completo', () => {
+    const map = new MapWidget();
+    map.mode = 'chase_heading';
+    map.zoomMeters = 400;
+
+    const snap = createSnapshot(5000, 110, 0.4);
+    snap.latitude = 40.4168;
+    snap.longitude = -3.7038;
+    snap.gpsAvailable = true;
+    snap.bearingDeg = 45;
+    snap.bearingAvailable = true;
+
+    const points = [
+      { time_offset_video_sec: 0, latitude: 40.416, longitude: -3.704 } as any,
+      { time_offset_video_sec: 1, latitude: 40.4168, longitude: -3.7038 } as any,
+      { time_offset_video_sec: 2, latitude: 40.4175, longitude: -3.703 } as any,
+    ];
+
+    // Modo minimapa de videojuego rotando con el rumbo
+    map.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+      allPoints: points,
+    });
+
+    // Modo minimapa norte arriba
+    map.mode = 'chase_north';
+    map.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+      allPoints: points,
+    });
+
+    // Modo circuito completo estático
+    map.mode = 'full_circuit';
+    map.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+      allPoints: points,
+    });
+
+    expect(map.mode).toBe('full_circuit');
   });
 });

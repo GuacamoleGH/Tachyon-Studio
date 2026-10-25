@@ -14,6 +14,143 @@ export interface ImportProgressCallback {
   (step: string, percentage: number): void;
 }
 
+function concatChunks(chunks: Uint8Array[]): Uint8Array {
+  if (chunks.length === 0) return new Uint8Array(0);
+  if (chunks.length === 1) return chunks[0];
+  const total = chunks.reduce((acc, c) => acc + c.length, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    out.set(c, offset);
+    offset += c.length;
+  }
+  return out;
+}
+
+interface ExtractedZipData {
+  csvBytes?: Uint8Array;
+  jsonBytes?: Uint8Array;
+  gpxBytes?: Uint8Array;
+  readmeBytes?: Uint8Array;
+  videoBlob?: Blob;
+}
+
+/**
+ * Descomprime un paquete ZIP en streaming evitando cargar archivos de varios gigabytes (p.ej. vídeos 4K de 3GB)
+ * en un único ArrayBuffer contiguo en memoria, lo que causaría fallo de asignación en el navegador.
+ */
+async function extractZipEntries(
+  zipInput: File | Uint8Array | ArrayBuffer,
+  onProgress?: ImportProgressCallback
+): Promise<ExtractedZipData> {
+  return new Promise((resolve, reject) => {
+    try {
+      const uz = new fflate.Unzip();
+      uz.register(fflate.UnzipInflate);
+
+      const textChunksMap: Record<string, Uint8Array[]> = {};
+      const videoBlobParts: BlobPart[] = [];
+      let openFiles = 0;
+      let streamFinished = false;
+
+      function checkFinished() {
+        if (streamFinished && openFiles === 0) {
+          const findTextEntry = (name: string): Uint8Array | undefined => {
+            const key = Object.keys(textChunksMap).find((k) => k.toLowerCase().endsWith(name.toLowerCase()));
+            return key ? concatChunks(textChunksMap[key]) : undefined;
+          };
+
+          const csvBytes = findTextEntry('telemetria.csv');
+          const jsonBytes = findTextEntry('session.json');
+          const gpxBytes = findTextEntry('ruta.gpx');
+          const readmeBytes = findTextEntry('leeme_sincronizacion.txt');
+
+          let videoBlob: Blob | undefined;
+          if (videoBlobParts.length > 0) {
+            videoBlob = new Blob(videoBlobParts, { type: 'video/mp4' });
+          }
+
+          resolve({
+            csvBytes,
+            jsonBytes,
+            gpxBytes,
+            readmeBytes,
+            videoBlob,
+          });
+        }
+      }
+
+      uz.onfile = (file) => {
+        openFiles++;
+        const lowerName = file.name.toLowerCase();
+        const isVideo = lowerName.endsWith('video.mp4');
+        const isTargetText =
+          lowerName.endsWith('telemetria.csv') ||
+          lowerName.endsWith('session.json') ||
+          lowerName.endsWith('ruta.gpx') ||
+          lowerName.endsWith('leeme_sincronizacion.txt');
+
+        if (isTargetText) {
+          textChunksMap[lowerName] = [];
+        }
+
+        file.ondata = (err, chunk, final) => {
+          if (err) {
+            console.error('Error descomprimiendo archivo:', file.name, err);
+          }
+          if (chunk) {
+            if (isVideo) {
+              videoBlobParts.push(chunk);
+            } else if (isTargetText) {
+              textChunksMap[lowerName].push(chunk);
+            }
+          }
+          if (final) {
+            openFiles--;
+            checkFinished();
+          }
+        };
+
+        file.start();
+      };
+
+      (async () => {
+        try {
+          if (zipInput instanceof File) {
+            const CHUNK_SIZE = 16 * 1024 * 1024; // Chunks de 16 MB para no saturar memoria
+            const totalSize = zipInput.size;
+            let offset = 0;
+
+            while (offset < totalSize) {
+              const end = Math.min(offset + CHUNK_SIZE, totalSize);
+              const slice = zipInput.slice(offset, end);
+              const arrayBuf = await slice.arrayBuffer();
+              const isFinal = end >= totalSize;
+              uz.push(new Uint8Array(arrayBuf), isFinal);
+              offset = end;
+
+              const progressPct = Math.min(45, 10 + Math.round((offset / totalSize) * 35));
+              const mbDone = (offset / (1024 * 1024)).toFixed(0);
+              const mbTotal = (totalSize / (1024 * 1024)).toFixed(0);
+              onProgress?.(`Descomprimiendo archivos (${mbDone} MB de ${mbTotal} MB)...`, progressPct);
+            }
+          } else {
+            const bytes = zipInput instanceof ArrayBuffer ? new Uint8Array(zipInput) : zipInput;
+            uz.push(bytes, true);
+          }
+
+          streamFinished = true;
+          checkFinished();
+        } catch (e) {
+          reject(e);
+        }
+      })();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 /**
  * Importa y analiza por completo un paquete ZIP de sesión exportado por Tachyon.
  */
@@ -21,38 +158,18 @@ export async function importSessionZip(
   zipInput: File | Uint8Array | ArrayBuffer,
   onProgress?: ImportProgressCallback
 ): Promise<SessionBundle> {
-  onProgress?.('Leyendo archivo ZIP...', 10);
+  onProgress?.('Iniciando lectura del archivo ZIP...', 10);
 
-  let zipBytes: Uint8Array;
-  if (zipInput instanceof File) {
-    const arrayBuffer = await zipInput.arrayBuffer();
-    zipBytes = new Uint8Array(arrayBuffer);
-  } else if (zipInput instanceof ArrayBuffer) {
-    zipBytes = new Uint8Array(zipInput);
-  } else {
-    zipBytes = zipInput;
-  }
+  const extracted = await extractZipEntries(zipInput, onProgress);
 
-  onProgress?.('Descomprimiendo archivos en memoria...', 30);
-  const unzipped = fflate.unzipSync(zipBytes);
-
-  // Buscar archivos dentro del ZIP (soportando mayúsculas/minúsculas o nombres en la raíz)
-  const fileEntries = Object.keys(unzipped);
-
-  const findEntry = (name: string): Uint8Array | null => {
-    const key = fileEntries.find((f) => f.toLowerCase().endsWith(name.toLowerCase()));
-    return key ? unzipped[key] : null;
-  };
-
-  const csvBytes = findEntry('telemetria.csv');
+  const csvBytes = extracted.csvBytes;
   if (!csvBytes) {
     throw new Error('El paquete ZIP no contiene el archivo requerido "telemetria.csv".');
   }
 
-  const jsonBytes = findEntry('session.json');
-  const gpxBytes = findEntry('ruta.gpx');
-  const readmeBytes = findEntry('LEEME_SINCRONIZACION.txt');
-  const videoBytes = findEntry('video.mp4');
+  const jsonBytes = extracted.jsonBytes;
+  const gpxBytes = extracted.gpxBytes;
+  const readmeBytes = extracted.readmeBytes;
 
   const textDecoder = new TextDecoder('utf-8');
 
@@ -82,12 +199,11 @@ export async function importSessionZip(
 
   // 3. Preparar vídeo si existe
   let hasVideo = false;
-  let videoBlob: Blob | undefined;
+  let videoBlob: Blob | undefined = extracted.videoBlob;
   let videoUrl: string | undefined;
 
-  if (videoBytes && videoBytes.length > 0) {
+  if (videoBlob && videoBlob.size > 0) {
     hasVideo = true;
-    videoBlob = new Blob([new Uint8Array(videoBytes)], { type: 'video/mp4' });
     if (typeof URL !== 'undefined' && URL.createObjectURL) {
       videoUrl = URL.createObjectURL(videoBlob);
     }
