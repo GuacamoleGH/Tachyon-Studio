@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gauge, Upload, Zap, Sliders, FileText, PlayCircle, LayoutTemplate } from 'lucide-react';
+import { Upload, Zap, Sliders, FileText, PlayCircle, LayoutTemplate } from 'lucide-react';
 
 export type AppTab = 'summary' | 'profile' | 'player' | 'editor';
 
@@ -26,8 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="border-b border-[#2C3947] bg-[#13181E] px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-[#1A222B] border border-[#2C3947] text-[#00E676] shadow-[0_0_12px_rgba(0,230,118,0.25)]">
-            <Gauge className="w-5 h-5 stroke-[2.2]" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#1A222B] border border-[#2C3947] p-1 shadow-[0_0_15px_rgba(0,230,118,0.25)] overflow-hidden">
+            <img src="/logo.png" alt="Tachyon Studio" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-2">

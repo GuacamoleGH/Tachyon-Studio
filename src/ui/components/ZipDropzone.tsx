@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Upload, FileArchive, Zap, AlertCircle } from 'lucide-react';
+import { Upload, Zap, AlertCircle } from 'lucide-react';
 
 interface ZipDropzoneProps {
   onFileSelected: (file: File) => void;
@@ -71,8 +71,8 @@ export const ZipDropzone: React.FC<ZipDropzoneProps> = ({
           disabled={isLoading}
         />
 
-        <div className="w-16 h-16 rounded-2xl bg-[#1A222B] border border-[#2C3947] flex items-center justify-center text-[#00E676] mb-5 shadow-[0_0_25px_rgba(0,230,118,0.15)]">
-          <FileArchive className="w-8 h-8 stroke-[1.8]" />
+        <div className="w-24 h-24 rounded-2xl bg-[#1A222B]/90 border border-[#2C3947] flex items-center justify-center p-3 mb-5 shadow-[0_0_35px_rgba(0,230,118,0.25)] hover:scale-105 transition-transform overflow-hidden">
+          <img src="/logo.png" alt="Tachyon Studio Logo" className="w-full h-full object-contain" />
         </div>
 
         <h3 className="text-xl font-bold text-[#F0F4F8] tracking-wide mb-2">

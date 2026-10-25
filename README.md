@@ -1,6 +1,8 @@
-# Tachyon Studio 🏁
-
 <div align="center">
+
+<img src="./Tachyon-Studio.png" alt="Tachyon Studio Logo" width="160" />
+
+# Tachyon Studio 🏁
 
 ```
   ████████╗ █████╗  ██████╗██╗  ██╗██╗   ██╗ ██████╗ ███╗   ██╗
