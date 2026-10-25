@@ -6,6 +6,10 @@ import { GMeterWidget } from '../widgets/GMeterWidget';
 import { PedalWidget } from '../widgets/PedalWidget';
 import { MapWidget } from '../widgets/MapWidget';
 import { SpeedGraphWidget } from '../widgets/SpeedGraphWidget';
+import { GearIndicatorWidget } from '../widgets/GearIndicatorWidget';
+import { CoolantTempWidget } from '../widgets/CoolantTempWidget';
+import { BrakeThrottleWidget } from '../widgets/BrakeThrottleWidget';
+import { TachometerBarWidget } from '../widgets/TachometerBarWidget';
 import { VehicleProfile } from '../../core/profile/vehicleProfile';
 import { TelemetrySnapshot } from '../../core/telemetry/timeEngine';
 import { TelemetryPoint } from '../../core/model/telemetry';
@@ -259,6 +263,18 @@ export class OverlayRenderer {
         break;
       case 'speed_graph':
         widget = new SpeedGraphWidget({ ...config.bounds });
+        break;
+      case 'gear_indicator':
+        widget = new GearIndicatorWidget({ ...config.bounds });
+        break;
+      case 'coolant_temp':
+        widget = new CoolantTempWidget({ ...config.bounds });
+        break;
+      case 'brake_throttle':
+        widget = new BrakeThrottleWidget({ ...config.bounds });
+        break;
+      case 'tachometer_bar':
+        widget = new TachometerBarWidget({ ...config.bounds });
         break;
       default:
         widget = new TachometerCircularWidget({ ...config.bounds });

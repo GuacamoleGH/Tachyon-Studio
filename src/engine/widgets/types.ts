@@ -24,6 +24,9 @@ export type WidgetType =
   | 'shift_lights'
   | 'speedometer'
   | 'throttle'
+  | 'brake_throttle'
+  | 'gear_indicator'
+  | 'coolant_temp'
   | 'g_meter'
   | 'map'
   | 'speed_graph';

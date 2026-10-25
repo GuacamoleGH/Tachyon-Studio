@@ -131,8 +131,88 @@ export const TEMPLATE_MINIMALISTA: OverlayTemplate = {
   ],
 };
 
+export const TEMPLATE_GT3_COMPETICION: OverlayTemplate = {
+  schema_version: '1.0.0',
+  id: 'template_gt3',
+  name: 'Cockpit GT3 Pro (Display Carreras)',
+  description: 'Disposición de competición con tacómetro de barra, marcha engranada gigante, pedales duales y temperatura de motor.',
+  resolution: { width: 1280, height: 720 },
+  unit_system: 'metric',
+  opacity: 1.0,
+  show_timer: true,
+  widgets: [
+    {
+      id: 'shift_lights',
+      type: 'shift_lights',
+      name: 'Shift Lights',
+      bounds: { x: 450, y: 20, width: 380, height: 42 },
+      visible: true,
+      properties: { pattern: 'left_to_right', flash_hz: 8 },
+    },
+    {
+      id: 'tachometer_bar',
+      type: 'tachometer_bar',
+      name: 'Tacómetro de Barra GT',
+      bounds: { x: 450, y: 70, width: 380, height: 48 },
+      visible: true,
+    },
+    {
+      id: 'gear_indicator',
+      type: 'gear_indicator',
+      name: 'Indicador de Marcha',
+      bounds: { x: 355, y: 575, width: 80, height: 110 },
+      visible: true,
+    },
+    {
+      id: 'speedometer',
+      type: 'speedometer',
+      name: 'Velocímetro Digital',
+      bounds: { x: 135, y: 575, width: 210, height: 110 },
+      visible: true,
+      properties: { preferredSource: 'GPS' },
+    },
+    {
+      id: 'brake_throttle',
+      type: 'brake_throttle',
+      name: 'Pedales Freno y Gas',
+      bounds: { x: 445, y: 575, width: 85, height: 110 },
+      visible: true,
+    },
+    {
+      id: 'coolant_temp',
+      type: 'coolant_temp',
+      name: 'Temperatura Motor',
+      bounds: { x: 135, y: 490, width: 140, height: 75 },
+      visible: true,
+    },
+    {
+      id: 'g_meter',
+      type: 'g_meter',
+      name: 'G-Meter',
+      bounds: { x: 1100, y: 540, width: 145, height: 145 },
+      visible: true,
+      properties: { maxScaleG: 1.5 },
+    },
+    {
+      id: 'map',
+      type: 'map',
+      name: 'Trazada GPS',
+      bounds: { x: 1065, y: 20, width: 180, height: 135 },
+      visible: true,
+    },
+    {
+      id: 'speed_graph',
+      type: 'speed_graph',
+      name: 'Gráfica de Velocidad',
+      bounds: { x: 540, y: 575, width: 545, height: 110 },
+      visible: true,
+    },
+  ],
+};
+
 export const BUILTIN_TEMPLATES: OverlayTemplate[] = [
   TEMPLATE_MYCHRON_5,
+  TEMPLATE_GT3_COMPETICION,
   TEMPLATE_MINIMALISTA,
 ];
 

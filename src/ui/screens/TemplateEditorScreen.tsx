@@ -105,20 +105,40 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 1. Fondo de cuadrícula sutil estilo tablero de diseño
+    // 1. Fondo de cuadrícula proporcional a la resolución (mantiene el mismo tamaño físico de celda en 720p, 1080p, 2K y 4K)
     ctx.fillStyle = '#090C0E';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.strokeStyle = '#151B22';
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    for (let gx = 0; gx < canvas.width; gx += gridSize) {
+    const resScale = canvas.width / 1280;
+    const gridSize = Math.round(40 * resScale);
+    const majorGridStep = gridSize * 4;
+
+    // Líneas secundarias
+    ctx.strokeStyle = '#121820';
+    ctx.lineWidth = Math.max(1, Math.round(1 * resScale));
+    for (let gx = 0; gx <= canvas.width; gx += gridSize) {
       ctx.beginPath();
       ctx.moveTo(gx, 0);
       ctx.lineTo(gx, canvas.height);
       ctx.stroke();
     }
-    for (let gy = 0; gy < canvas.height; gy += gridSize) {
+    for (let gy = 0; gy <= canvas.height; gy += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(canvas.width, gy);
+      ctx.stroke();
+    }
+
+    // Líneas principales cada 4 celdas para referencia de diseño
+    ctx.strokeStyle = '#1B2430';
+    ctx.lineWidth = Math.max(1.5, Math.round(1.5 * resScale));
+    for (let gx = 0; gx <= canvas.width; gx += majorGridStep) {
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, canvas.height);
+      ctx.stroke();
+    }
+    for (let gy = 0; gy <= canvas.height; gy += majorGridStep) {
       ctx.beginPath();
       ctx.moveTo(0, gy);
       ctx.lineTo(canvas.width, gy);
@@ -133,7 +153,17 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
       // Snapshot simulado de muestra
       const dummySnap = {
         timeSec: currentTime,
-        signals: {} as any,
+        signals: {
+          coolant_temp_c: {
+            key: 'coolant_temp_c',
+            value: 92,
+            isAvailable: true,
+            status: 'VALID',
+            unit: '°C',
+            category: 'OBD',
+            label: 'Temp. Refrigerante',
+          },
+        } as any,
         activeEvents: [],
         speedKmh: 125.4,
         speedAvailable: true,
@@ -163,16 +193,16 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
       ctx.save();
       // Borde de selección
       ctx.strokeStyle = CockpitColors.neonCyan;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = Math.max(1.5, Math.round(2 * resScale));
+      ctx.setLineDash([4 * resScale, 4 * resScale]);
       ctx.strokeRect(x, y, width, height);
       ctx.setLineDash([]);
 
-      // 8 Manadores de redimensión en las esquinas y puntos medios
-      const handleSize = 8;
+      // 8 Manejadores de redimensión en las esquinas y puntos medios escalados
+      const handleSize = Math.max(8, Math.round(8 * resScale));
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = CockpitColors.neonCyan;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = Math.max(1.5, Math.round(1.5 * resScale));
 
       const handles = [
         { x, y }, // NW
@@ -191,9 +221,10 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
       }
 
       // Etiqueta de dimensiones
-      ctx.font = 'bold 11px ui-monospace, monospace';
+      const labelFontSize = Math.max(11, Math.round(11 * resScale));
+      ctx.font = `bold ${labelFontSize}px ui-monospace, monospace`;
       ctx.fillStyle = CockpitColors.neonCyan;
-      ctx.fillText(`${Math.round(width)}x${Math.round(height)}`, x, y - 6);
+      ctx.fillText(`${Math.round(width)}x${Math.round(height)}`, x, y - Math.round(6 * resScale));
 
       ctx.restore();
     }
@@ -223,7 +254,8 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
     // 1. Comprobar si se pulsó sobre un manejador del widget seleccionado
     if (selectedWidget && selectedWidget.visible) {
       const b = selectedWidget.bounds;
-      const hSize = 12;
+      const resScale = template.resolution.width / 1280;
+      const hSize = Math.max(12, Math.round(12 * resScale));
 
       const isNear = (hx: number, hy: number) => Math.abs(x - hx) <= hSize && Math.abs(y - hy) <= hSize;
 
@@ -376,6 +408,29 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
     } else if (type === 'speed_graph') {
       name = 'Gráfica de Velocidad';
       bounds = { x: 100, y: 350, width: 400, height: 120 };
+    } else if (type === 'gear_indicator') {
+      name = 'Indicador de Marcha (Gear)';
+      bounds = { x: 300, y: 200, width: 80, height: 100 };
+    } else if (type === 'coolant_temp') {
+      name = 'Temp. Refrigerante OBD';
+      bounds = { x: 100, y: 150, width: 140, height: 75 };
+    } else if (type === 'brake_throttle') {
+      name = 'Pedales Duales (Freno / Gas)';
+      bounds = { x: 390, y: 200, width: 85, height: 110 };
+    } else if (type === 'tachometer_bar') {
+      name = 'Tacómetro de Barra GT';
+      bounds = { x: 200, y: 350, width: 380, height: 45 };
+    }
+
+    // Escalar bounds si la resolución actual no es 720p
+    const resScale = template.resolution.width / 1280;
+    if (resScale !== 1) {
+      bounds = {
+        x: Math.round(bounds.x * resScale),
+        y: Math.round(bounds.y * resScale),
+        width: Math.round(bounds.width * resScale),
+        height: Math.round(bounds.height * resScale),
+      };
     }
 
     setTemplate((prev) => ({
@@ -509,9 +564,13 @@ export const TemplateEditorScreen: React.FC<TemplateEditorScreenProps> = ({ sess
                 + Añadir widget...
               </option>
               <option value="tachometer_circular">Tacómetro Circular</option>
+              <option value="tachometer_bar">Tacómetro de Barra GT</option>
               <option value="shift_lights">Shift Lights</option>
+              <option value="gear_indicator">Indicador de Marcha (Gear)</option>
               <option value="speedometer">Velocímetro Digital</option>
               <option value="throttle">Pedal Acelerador</option>
+              <option value="brake_throttle">Pedales Duales (Freno / Gas)</option>
+              <option value="coolant_temp">Temp. Refrigerante OBD</option>
               <option value="g_meter">G-Meter</option>
               <option value="map">Trazada GPS</option>
               <option value="speed_graph">Gráfica Velocidad</option>

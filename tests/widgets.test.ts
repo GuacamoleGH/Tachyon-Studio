@@ -3,6 +3,10 @@ import { TachometerCircularWidget } from '../src/engine/widgets/TachometerWidget
 import { ShiftLightsWidget } from '../src/engine/widgets/ShiftLightsWidget';
 import { SpeedometerWidget } from '../src/engine/widgets/SpeedometerWidget';
 import { GMeterWidget } from '../src/engine/widgets/GMeterWidget';
+import { GearIndicatorWidget } from '../src/engine/widgets/GearIndicatorWidget';
+import { CoolantTempWidget } from '../src/engine/widgets/CoolantTempWidget';
+import { BrakeThrottleWidget } from '../src/engine/widgets/BrakeThrottleWidget';
+import { TachometerBarWidget } from '../src/engine/widgets/TachometerBarWidget';
 import { PRESET_GASOLINA_ESTANDAR } from '../src/core/profile/vehicleProfile';
 import { TelemetrySnapshot } from '../src/core/telemetry/timeEngine';
 import { STANDARD_SIGNALS, StandardSignalKey } from '../src/core/model/telemetry';
@@ -162,6 +166,85 @@ describe('Base Widgets Render Tests', () => {
     gmeter.render({
       ctx,
       snapshot: createSnapshot(3000, 100, null),
+      profile,
+      timeSec: 1.0,
+    });
+  });
+
+  it('renderiza el GearIndicator calculando marchas y neutral', () => {
+    const gear = new GearIndicatorWidget();
+
+    // Neutro o parado
+    gear.render({
+      ctx,
+      snapshot: createSnapshot(850, 0, 0),
+      profile,
+      timeSec: 1.0,
+    });
+
+    // En movimiento a fondo (marcha 3)
+    gear.render({
+      ctx,
+      snapshot: createSnapshot(5500, 120, 0.2),
+      profile,
+      timeSec: 1.0,
+    });
+
+    // Zona roja
+    gear.render({
+      ctx,
+      snapshot: createSnapshot(7200, 160, 0.2),
+      profile,
+      timeSec: 1.0,
+    });
+  });
+
+  it('renderiza CoolantTempWidget en métrico e imperial', () => {
+    const tempWidget = new CoolantTempWidget();
+    const snap = createSnapshot(3000, 100, 0);
+    snap.signals.coolant_temp_c = {
+      key: 'coolant_temp_c',
+      value: 95,
+      isAvailable: true,
+      status: 'VALID',
+      unit: '°C',
+      category: 'OBD',
+      label: 'Temp. Refrigerante',
+    };
+
+    tempWidget.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+      unitSystem: 'metric',
+    });
+
+    tempWidget.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+      unitSystem: 'imperial',
+    });
+  });
+
+  it('renderiza BrakeThrottleWidget y TachometerBarWidget', () => {
+    const dualPedals = new BrakeThrottleWidget();
+    const tachBar = new TachometerBarWidget();
+    const snap = createSnapshot(6200, 140, 0);
+    snap.longitudinalG = -0.8; // Freno fuerte
+
+    dualPedals.render({
+      ctx,
+      snapshot: snap,
+      profile,
+      timeSec: 1.0,
+    });
+
+    tachBar.render({
+      ctx,
+      snapshot: snap,
       profile,
       timeSec: 1.0,
     });
