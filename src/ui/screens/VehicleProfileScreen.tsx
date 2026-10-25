@@ -9,6 +9,10 @@ import {
   Upload,
   Sparkles,
   Zap,
+  Plus,
+  Trash2,
+  Bookmark,
+  X,
 } from 'lucide-react';
 import {
   VehicleProfile,
@@ -17,6 +21,9 @@ import {
   validateVehicleProfile,
   saveProfileToStorage,
   deriveProfileFromAppConfig,
+  loadCustomPresets,
+  saveCustomPreset,
+  deleteCustomPreset,
 } from '../../core/profile/vehicleProfile';
 import { TachometerCircularWidget } from '../../engine/widgets/TachometerWidget';
 import { ShiftLightsWidget } from '../../engine/widgets/ShiftLightsWidget';
@@ -42,6 +49,19 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
   const [testRpm, setTestRpm] = useState<number>(profile.rpm.idle);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Presets personalizados de usuario en localStorage
+  const [customPresets, setCustomPresets] = useState<VehicleProfile[]>(() => loadCustomPresets());
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Formulario de creación de nuevo preset
+  const [newPresetName, setNewPresetName] = useState('');
+  const [newPresetScaleMax, setNewPresetScaleMax] = useState<number>(8000);
+  const [newPresetRedline, setNewPresetRedline] = useState<number>(6500);
+  const [newPresetIdle, setNewPresetIdle] = useState<number>(750);
+  const [newPresetStartRpm, setNewPresetStartRpm] = useState<number>(5200);
+  const [newPresetAllOnRpm, setNewPresetAllOnRpm] = useState<number>(6000);
+  const [newPresetFlashRpm, setNewPresetFlashRpm] = useState<number>(6300);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +70,27 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
   const shiftWidget = useRef(new ShiftLightsWidget({ x: 350, y: 70, width: 340, height: 50 }));
 
   const validation = validateVehicleProfile(profile);
+
+  // Presupuesto de validación para el nuevo preset en el modal
+  const candidatePreset: VehicleProfile = {
+    schema_version: '1.0.0',
+    id: 'candidate_check',
+    name: newPresetName.trim() || 'Nuevo Preset',
+    rpm: {
+      ...profile.rpm,
+      idle: newPresetIdle,
+      scale_max: newPresetScaleMax,
+      redline_start: newPresetRedline,
+      limiter: Math.max(newPresetRedline, newPresetScaleMax - 500),
+    },
+    shift_lights: {
+      ...profile.shift_lights,
+      start_rpm: newPresetStartRpm,
+      all_on_rpm: newPresetAllOnRpm,
+      flash_rpm: newPresetFlashRpm,
+    },
+  };
+  const modalValidation = validateVehicleProfile(candidatePreset);
 
   // Generar snapshot simulado para el canvas
   const getSimulatedSnapshot = useCallback(
@@ -127,6 +168,60 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
     setProfile(preset);
     setTestRpm(preset.rpm.idle);
     onProfileUpdated?.(preset);
+  };
+
+  const handleOpenAddModal = () => {
+    setNewPresetName(`${profile.name} Personalizado`);
+    setNewPresetScaleMax(profile.rpm.scale_max);
+    setNewPresetRedline(profile.rpm.redline_start);
+    setNewPresetIdle(profile.rpm.idle);
+    setNewPresetStartRpm(profile.shift_lights.start_rpm);
+    setNewPresetAllOnRpm(profile.shift_lights.all_on_rpm);
+    setNewPresetFlashRpm(profile.shift_lights.flash_rpm);
+    setIsAddModalOpen(true);
+  };
+
+  const handleCreatePreset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPresetName.trim()) return;
+    if (!modalValidation.isValid) return;
+
+    const presetToSave: VehicleProfile = {
+      schema_version: '1.0.0',
+      id: 'custom_' + Date.now(),
+      name: newPresetName.trim(),
+      rpm: {
+        ...profile.rpm,
+        idle: newPresetIdle,
+        scale_max: newPresetScaleMax,
+        redline_start: newPresetRedline,
+        limiter: Math.max(newPresetRedline, newPresetScaleMax - 500),
+      },
+      shift_lights: {
+        ...profile.shift_lights,
+        start_rpm: newPresetStartRpm,
+        all_on_rpm: newPresetAllOnRpm,
+        flash_rpm: newPresetFlashRpm,
+      },
+    };
+
+    const updated = saveCustomPreset(presetToSave);
+    setCustomPresets(updated);
+    setProfile(presetToSave);
+    setTestRpm(presetToSave.rpm.idle);
+    onProfileUpdated?.(presetToSave);
+    setIsAddModalOpen(false);
+    setSaveMessage(`¡Preset "${presetToSave.name}" guardado y activado con éxito!`);
+    setTimeout(() => setSaveMessage(null), 3500);
+  };
+
+  const handleDeleteCustomPreset = (id: string, name: string) => {
+    if (window.confirm(`¿Deseas eliminar el preset "${name}"?`)) {
+      const updated = deleteCustomPreset(id);
+      setCustomPresets(updated);
+      setSaveMessage(`Preset "${name}" eliminado.`);
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
   };
 
   const handleSaveToStorage = () => {
@@ -230,23 +325,73 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
       )}
 
       {/* 2. Selector de Presets */}
-      <div className="bg-[#13181E] border border-[#2C3947] rounded-xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs font-mono text-[#8B9CB0] uppercase">Presets Rápidos:</span>
-        <div className="flex flex-wrap gap-2">
+      <div className="bg-[#13181E] border border-[#2C3947] rounded-xl p-4 shadow-lg space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#00E676]" />
+            <span className="text-xs font-mono text-[#8B9CB0] uppercase font-semibold">
+              Presets de Vehículo / Tacómetro:
+            </span>
+          </div>
+
+          {/* Botón para Añadir Preset */}
+          <button
+            onClick={handleOpenAddModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#00E676]/15 hover:bg-[#00E676]/25 text-[#00E676] border border-[#00E676]/40 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            title="Guardar configuración actual o crear un nuevo preset de RPM"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Añadir Preset</span>
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Presets integrados */}
           {VEHICLE_PRESETS.map((preset) => (
             <button
               key={preset.id}
               onClick={() => handlePresetSelect(preset)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium border transition-colors cursor-pointer ${
                 profile.id === preset.id
-                  ? 'bg-[#00E676]/15 text-[#00E676] border-[#00E676]/40'
-                  : 'bg-[#1A222B] text-[#8B9CB0] hover:text-[#F0F4F8] border-[#2C3947]'
+                  ? 'bg-[#00E676]/20 text-[#00E676] border-[#00E676]/60 shadow-[0_0_10px_rgba(0,230,118,0.2)]'
+                  : 'bg-[#1A222B] text-[#8B9CB0] hover:text-[#F0F4F8] hover:bg-[#2C3947] border-[#2C3947]'
               }`}
             >
-              <Sparkles className="w-3 h-3 inline mr-1" />
+              <Sparkles className="w-3 h-3 inline mr-1 opacity-70" />
               {preset.name}
             </button>
           ))}
+
+          {/* Presets personalizados del usuario */}
+          {customPresets.map((preset) => (
+            <div
+              key={preset.id}
+              className={`inline-flex items-center rounded-lg border text-xs font-mono font-medium transition-colors ${
+                profile.id === preset.id
+                  ? 'bg-[#00E5FF]/20 text-[#00E5FF] border-[#00E5FF]/60 shadow-[0_0_10px_rgba(0,229,255,0.2)]'
+                  : 'bg-[#1A222B] text-[#8B9CB0] hover:text-[#F0F4F8] border-[#2C3947]'
+              }`}
+            >
+              <button
+                onClick={() => handlePresetSelect(preset)}
+                className="px-2.5 py-1.5 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Bookmark className="w-3 h-3 text-[#00E5FF]" />
+                <span>{preset.name}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteCustomPreset(preset.id, preset.name);
+                }}
+                title={`Eliminar preset "${preset.name}"`}
+                className="pr-2 pl-0.5 py-1.5 text-[#8B9CB0] hover:text-[#FF1744] transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+
           {session?.vehicleConfigWithOrigin && (
             <button
               onClick={() =>
@@ -254,7 +399,7 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
                   deriveProfileFromAppConfig(session.vehicleConfigWithOrigin.config, 'App de Sesión')
                 )
               }
-              className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-[#1A222B] text-[#00E5FF] hover:bg-[#2C3947] border border-[#00E5FF]/40 transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium bg-[#1A222B] text-[#00E5FF] hover:bg-[#2C3947] border border-[#00E5FF]/40 transition-colors cursor-pointer"
             >
               <Zap className="w-3 h-3 inline mr-1" />
               Restaurar de session.json
@@ -582,6 +727,165 @@ export const VehicleProfileScreen: React.FC<VehicleProfileScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal para Crear / Añadir Nuevo Preset */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#13181E] border border-[#2C3947] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-[#2C3947] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#00E676]/15 border border-[#00E676]/30 flex items-center justify-center text-[#00E676]">
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#F0F4F8]">Añadir Nuevo Preset de RPM</h3>
+                  <p className="text-xs text-[#8B9CB0]">
+                    Guarda la calibración para seleccionarla rápidamente.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-[#8B9CB0] hover:text-[#F0F4F8] p-1.5 rounded-lg hover:bg-[#1A222B] transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePreset} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-[#8B9CB0] mb-1">
+                  Nombre del Preset / Vehículo:
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="ej. Mazda3 Turbo, Honda S2000, Kart 125cc..."
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-sm text-[#F0F4F8] font-mono focus:border-[#00E676] outline-none"
+                  autoFocus
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-[#8B9CB0] mb-1">
+                    Escala Máx (scale_max):
+                  </label>
+                  <input
+                    type="number"
+                    step={100}
+                    value={newPresetScaleMax}
+                    onChange={(e) => setNewPresetScaleMax(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#F0F4F8] font-mono focus:border-[#00E676] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[#FF1744] mb-1">
+                    Línea Roja (redline_start):
+                  </label>
+                  <input
+                    type="number"
+                    step={100}
+                    value={newPresetRedline}
+                    onChange={(e) => setNewPresetRedline(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#FF1744] font-mono focus:border-[#FF1744] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-[#8B9CB0] mb-1">
+                    Ralentí (idle):
+                  </label>
+                  <input
+                    type="number"
+                    step={50}
+                    value={newPresetIdle}
+                    onChange={(e) => setNewPresetIdle(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#F0F4F8] font-mono focus:border-[#00E676] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[#00E676] mb-1">
+                    Inicio Luces (start_rpm):
+                  </label>
+                  <input
+                    type="number"
+                    step={100}
+                    value={newPresetStartRpm}
+                    onChange={(e) => setNewPresetStartRpm(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#00E676] font-mono focus:border-[#00E676] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-[#FFB300] mb-1">
+                    Todas Fijas (all_on_rpm):
+                  </label>
+                  <input
+                    type="number"
+                    step={100}
+                    value={newPresetAllOnRpm}
+                    onChange={(e) => setNewPresetAllOnRpm(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#FFB300] font-mono focus:border-[#FFB300] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-[#FF1744] mb-1">
+                    Flash Shift! (flash_rpm):
+                  </label>
+                  <input
+                    type="number"
+                    step={100}
+                    value={newPresetFlashRpm}
+                    onChange={(e) => setNewPresetFlashRpm(parseInt(e.target.value) || 0)}
+                    className="w-full bg-[#090C0E] border border-[#2C3947] rounded-lg px-3 py-2 text-xs text-[#FF1744] font-mono focus:border-[#FF1744] outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Advertencias de validación en tiempo real */}
+              {!modalValidation.isValid && (
+                <div className="bg-[#FF1744]/15 border border-[#FF1744]/40 p-3 rounded-lg text-xs text-[#FF1744] space-y-1">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Valores incoherentes:
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+                    {modalValidation.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#2C3947]">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#1A222B] hover:bg-[#2C3947] text-[#8B9CB0] hover:text-[#F0F4F8] transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!modalValidation.isValid || !newPresetName.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold bg-[#00E676] hover:bg-[#00c864] disabled:opacity-50 disabled:cursor-not-allowed text-[#090C0E] transition-all cursor-pointer shadow-[0_0_12px_rgba(0,230,118,0.2)]"
+                >
+                  <Save className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Guardar Preset</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

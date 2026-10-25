@@ -74,6 +74,36 @@ export const PRESET_GASOLINA_ESTANDAR: VehicleProfile = {
   },
 };
 
+export const PRESET_MAZDA3: VehicleProfile = {
+  schema_version: '1.0.0',
+  id: 'preset_mazda3',
+  name: 'Mazda3 (8000 RPM)',
+  rpm: {
+    idle: 750,
+    scale_max: 8000,
+    redline_start: 6500,
+    limiter: 7000,
+    major_tick: 1000,
+    minor_tick: 500,
+    label_divisor: 1000,
+  },
+  shift_lights: {
+    enabled: true,
+    led_count: 10,
+    start_rpm: 5200,
+    all_on_rpm: 6000,
+    flash_rpm: 6300,
+    flash_hz: 8,
+    pattern: 'left_to_right',
+    colors: [
+      { fromLed: 0, toLed: 3, color: '#00E676' }, // Verde
+      { fromLed: 4, toLed: 7, color: '#FFB300' }, // Ámbar
+      { fromLed: 8, toLed: 9, color: '#FF1744' }, // Rojo
+    ],
+    off_color: '#1F2937',
+  },
+};
+
 export const PRESET_DIESEL: VehicleProfile = {
   schema_version: '1.0.0',
   id: 'preset_diesel',
@@ -136,6 +166,7 @@ export const PRESET_DEPORTIVO_ALTAS_VUELTAS: VehicleProfile = {
 
 export const VEHICLE_PRESETS: VehicleProfile[] = [
   PRESET_GASOLINA_ESTANDAR,
+  PRESET_MAZDA3,
   PRESET_DIESEL,
   PRESET_DEPORTIVO_ALTAS_VUELTAS,
 ];
@@ -248,4 +279,48 @@ export function loadProfileFromStorage(): VehicleProfile | null {
     console.warn('Error leyendo perfil de localStorage:', e);
   }
   return null;
+}
+
+export const CUSTOM_PRESETS_STORAGE_KEY = 'tachyon_custom_vehicle_presets';
+
+export function loadCustomPresets(): VehicleProfile[] {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Error leyendo presets personalizados de localStorage:', e);
+  }
+  return [];
+}
+
+export function saveCustomPreset(preset: VehicleProfile): VehicleProfile[] {
+  const current = loadCustomPresets().filter((p) => p.id !== preset.id);
+  const updated = [...current, preset];
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.warn('Error guardando preset personalizado:', e);
+  }
+  return updated;
+}
+
+export function deleteCustomPreset(id: string): VehicleProfile[] {
+  const updated = loadCustomPresets().filter((p) => p.id !== id);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    console.warn('Error eliminando preset personalizado:', e);
+  }
+  return updated;
 }
